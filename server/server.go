@@ -7,14 +7,14 @@ import (
 	"github.com/yellyoshua/elections-app/server/database"
 )
 
-// DatabaseClient mongo client connection session
-var DatabaseClient *mongo.Database
+// ClientDatabase mongo client connection session
+func ClientDatabase() *mongo.Database {
+	client := database.Connect()
+	return client
+}
 
 // CreateServer create a server and database connection, this return a gin-gonic router
-func CreateServer(testing bool) *gin.Engine {
-	if testing != true {
-		DatabaseClient = database.Connect()
-	}
+func CreateServer() *gin.Engine {
 	router := gin.Default()
 	return router
 }

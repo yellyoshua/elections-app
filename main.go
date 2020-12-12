@@ -7,5 +7,6 @@ import (
 func main() {
 	setups.Folders()
 	setups.Environments()
-	setups.ServerAndDatabase(false)
+	setups.Database()
+	setups.Server()
 }

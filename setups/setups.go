@@ -1,6 +1,7 @@
 package setups
 
 import (
+	"log"
 	"net/http"
 	"os"
 
@@ -10,15 +11,27 @@ import (
 	"github.com/yellyoshua/elections-app/server/middlewares"
 	"github.com/yellyoshua/elections-app/server/modules/graphql"
 	"github.com/yellyoshua/elections-app/server/validators"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
-// ServerAndDatabase connect to database and start gin-gonic router
-func ServerAndDatabase(isTesting bool) {
-	var port string = os.Getenv("PORT")
-	router := server.CreateServer(isTesting)
-	router.Use(middlewares.CorsMiddleware)
+var clientDatabase *mongo.Database
 
-	HandlerGraphql := graphql.Handler()
+// Database connect to database
+func Database() {
+	clientDatabase = server.ClientDatabase()
+}
+
+// Server start gin-gonic router
+func Server() {
+	var port string = os.Getenv("PORT")
+
+	if clientDatabase == nil {
+		log.Fatal("step setup database skipped")
+	}
+
+	HandlerGraphql := graphql.Handler(clientDatabase)
+	router := server.CreateServer()
+	router.Use(middlewares.CorsMiddleware)
 
 	router.Static("/f/", PublicFolder)
 	router.Static("/static/", UploadFolder)

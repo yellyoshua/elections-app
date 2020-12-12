@@ -1,42 +1,28 @@
 package graphql
 
 import (
-	"fmt"
 	"net/http"
 
 	gql "github.com/graphql-go/graphql"
 	gqlhandler "github.com/graphql-go/graphql-go-handler"
-	"github.com/yellyoshua/elections-app/server"
-	"github.com/yellyoshua/elections-app/server/database"
+	"github.com/yellyoshua/elections-app/server/modules/graphql/gqlmutators"
+	"github.com/yellyoshua/elections-app/server/modules/graphql/gqlqueries"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
-var queryType = gql.NewObject(gql.ObjectConfig{
-	Name: "Query",
-	Fields: gql.Fields{
-		"latestPost": &gql.Field{
-			Type: gql.String,
-			Resolve: func(p gql.ResolveParams) (interface{}, error) {
-				return "Hello World!", nil
-			},
-		},
-		"currentPost": &gql.Field{
-			Type: gql.String,
-			Resolve: func(p gql.ResolveParams) (interface{}, error) {
-				return "Hello Post!", nil
-			},
-		},
-	},
-})
-
-var Schema, _ = gql.NewSchema(gql.SchemaConfig{
-	Query: queryType,
-})
-
 // Handler http handler
-func Handler() http.Handler {
-	fmt.Printf("db: %s", server.DatabaseClient.Collection(database.ProfileCollectionName).Name())
+func Handler(db *mongo.Database) http.Handler {
+	var queries = gqlqueries.Setup(db)
+	var mutators = gqlmutators.Setup(db)
+
+	var schema, _ = gql.NewSchema(gql.SchemaConfig{
+		Query:    queries,
+		Mutation: mutators,
+	})
+	// Here resolve schemes/queries/resolvers
+
 	graphqlHandler := gqlhandler.New(&gqlhandler.Config{
-		Schema:     &Schema,
+		Schema:     &schema,
 		Pretty:     true,
 		Playground: true,
 		GraphiQL:   true,

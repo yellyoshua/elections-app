@@ -11,7 +11,7 @@ type environment struct {
 	value string
 }
 
-// Environments if not exist .env file load default or system environments!
+// Environments if not exist .env file load system environments or defaults!
 func Environments() {
 	godotenv.Load(".env")
 
