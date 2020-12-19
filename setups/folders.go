@@ -1,24 +1,22 @@
 package setups
 
-import "os"
+import (
+	"os"
+
+	"github.com/yellyoshua/elections-app/server"
+)
 
 type folder struct {
 	path        string
 	permissions os.FileMode
 }
 
-// PublicFolder path for serve static files
-var PublicFolder string = "public"
-
-// UploadFolder path for serve static files
-var UploadFolder string = "public/uploads"
-
 // Folders create and setup permissions if don't exist
 func Folders() {
 
 	folders := []folder{
-		{path: PublicFolder, permissions: 0755},
-		{path: UploadFolder, permissions: 0755},
+		{path: server.PublicFolder, permissions: 0755},
+		{path: server.UploadFolder, permissions: 0755},
 	}
 
 	for _, f := range folders {

@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/yellyoshua/elections-app/server/models"
 	"gopkg.in/validator.v2"
 )
 
@@ -22,7 +23,7 @@ func CorsMiddleware(ctx *gin.Context) {
 
 // BodyLoginUser handle body request and valid fields
 func BodyLoginUser(ctx *gin.Context) {
-	var user bodyLoginUser
+	var user models.BodyLoginUser
 	request := ctx.Request
 	userValidator := validator.NewValidator()
 
@@ -38,11 +39,6 @@ func BodyLoginUser(ctx *gin.Context) {
 	} else {
 		ctx.Next()
 	}
-}
-
-type bodyLoginUser struct {
-	Identifier string `json:"identifier" validate:"nonzero"`
-	Password   string `json:"password" validate:"nonzero"`
 }
 
 func responseErrScheme(ctx *gin.Context, errs error) {

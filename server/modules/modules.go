@@ -5,9 +5,8 @@ import (
 	"github.com/yellyoshua/elections-app/server/modules/graphql"
 )
 
-// InitializeModules setup modules environment states
-func InitializeModules() {
+// Initialize create and setup modules
+func Initialize() {
 	graphql.Initialize()
-
 	logger.Server("Modules initialized!")
 }

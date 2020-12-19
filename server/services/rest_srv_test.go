@@ -11,7 +11,7 @@ import (
 // gin-gonic solve test. This test no pass
 func TestHandlerHome(t *testing.T) {
 	// _ := NewRestService()
-	router := server.CreateServer()
+	router := server.Initialize(":3000")
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("GET", "/", nil)
