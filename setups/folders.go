@@ -17,8 +17,8 @@ var UploadFolder string = "public/uploads"
 func Folders() {
 
 	folders := []folder{
-		folder{path: PublicFolder, permissions: 0755},
-		folder{path: UploadFolder, permissions: 0755},
+		{path: PublicFolder, permissions: 0755},
+		{path: UploadFolder, permissions: 0755},
 	}
 
 	for _, f := range folders {

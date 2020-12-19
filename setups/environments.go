@@ -14,14 +14,10 @@ type environment struct {
 // Environments if not exist .env file load system environments or defaults!
 func Environments() {
 	godotenv.Load(".env")
-
 	envs := []environment{
-		environment{"PORT", "3000"},
-		environment{"DB_USER", "root"},
-		environment{"DB_PASSWORD", "dbpwd"},
-		environment{"DB_ADDR", "localhost"},
-		environment{"DB_PORT", "27017"},
-		environment{"DB_NAME", "golang"},
+		{"PORT", "3000"},
+		{"DATABASE_URI", "mongodb://root:dbpwd@localhost:27017"},
+		{"DATABASE_NAME", "golang"},
 	}
 
 	for _, env := range envs {

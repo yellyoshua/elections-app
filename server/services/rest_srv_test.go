@@ -1,4 +1,4 @@
-package handlers
+package services
 
 import (
 	"net/http"
@@ -10,8 +10,8 @@ import (
 
 // gin-gonic solve test. This test no pass
 func TestHandlerHome(t *testing.T) {
-	var isTesting bool = true
-	router := server.CreateServer(isTesting)
+	// _ := NewRestService()
+	router := server.CreateServer()
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("GET", "/", nil)

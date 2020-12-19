@@ -1,4 +1,4 @@
-package database
+package repository
 
 import (
 	"testing"
@@ -6,24 +6,24 @@ import (
 
 func TestUsersCollectionName(t *testing.T) {
 	var expected string = "users"
-	if UserCollectionName != expected {
+	if CollectionUsers != expected {
 		t.Errorf("user collection got %v want %v",
-			UserCollectionName, expected)
+			CollectionUsers, expected)
 	}
 }
 
 func TestSessionsCollectionName(t *testing.T) {
 	var expected string = "sessions"
-	if SessionCollectionName != expected {
+	if CollectionSessions != expected {
 		t.Errorf("sessions collection got %v want %v",
-			SessionCollectionName, expected)
+			CollectionSessions, expected)
 	}
 }
 
 func TestProfilesCollectionName(t *testing.T) {
 	var expected string = "profiles"
-	if ProfileCollectionName != expected {
+	if CollectionProfiles != expected {
 		t.Errorf("profiles collection got %v want %v",
-			ProfileCollectionName, expected)
+			CollectionProfiles, expected)
 	}
 }

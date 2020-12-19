@@ -7,6 +7,7 @@ import (
 func main() {
 	setups.Folders()
 	setups.Environments()
-	setups.Database()
+	setups.Repositories()
+	setups.Modules()
 	setups.Server()
 }

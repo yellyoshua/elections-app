@@ -1,20 +1,13 @@
 package server
 
 import (
-	"go.mongodb.org/mongo-driver/mongo"
-
 	"github.com/gin-gonic/gin"
-	"github.com/yellyoshua/elections-app/server/database"
+	"github.com/yellyoshua/elections-app/logger"
 )
-
-// ClientDatabase mongo client connection session
-func ClientDatabase() *mongo.Database {
-	client := database.Connect()
-	return client
-}
 
 // CreateServer create a server and database connection, this return a gin-gonic router
 func CreateServer() *gin.Engine {
+	logger.Server("Starting GIN-GONIC server")
 	router := gin.Default()
 	return router
 }
