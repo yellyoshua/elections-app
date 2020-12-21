@@ -5,18 +5,19 @@ import (
 	"os"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/yellyoshua/elections-app/logger"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"go.mongodb.org/mongo-driver/x/bsonx"
 )
 
 // Connect connection with database
 func connect() *mongo.Database {
-	var (
-		dbName   string = os.Getenv("DATABASE_NAME")
-		mongoURI string = os.Getenv("DATABASE_URI")
-	)
+	dbName := os.Getenv("DATABASE_NAME")
+	mongoURI := os.Getenv("DATABASE_URI")
+
+	cxtTimeout, ctxCancel := context.WithTimeout(context.TODO(), 10*time.Second)
 
 	// Set client options
 	clientOpts := options.Client()
@@ -25,86 +26,99 @@ func connect() *mongo.Database {
 	clientURI := clientOpts.ApplyURI(mongoURI)
 
 	logger.Database("Connecting to database")
-	defer logger.Database("Connected to database!")
+	defer ctxCancel()
 
 	// Connect to MongoDB
-	client, err := mongo.Connect(context.TODO(), clientURI)
+	client, err := mongo.Connect(cxtTimeout, clientURI)
 
 	if err != nil {
-		logger.DatabaseFatal("Error connection database error: ", err)
+		logger.DatabaseFatal("Error connection database error: %v", err)
 		return nil
 	}
 
 	// Check the connection
-	if err = client.Ping(context.TODO(), nil); err != nil {
-		logger.DatabaseFatal("Error ping database error: ", err)
+	if err = client.Ping(cxtTimeout, nil); err != nil {
+		logger.DatabaseFatal("Error ping database error: %v", err)
 		return nil
 	}
 
 	db := client.Database(dbName)
 
-	// setupIndexes(db)
+	setupIndexes(cxtTimeout, db)
 
 	return db
 }
 
-func setupIndexes(db *mongo.Database) {
+func setupIndexes(ctx context.Context, db *mongo.Database) {
+	ctx, ctxCancel := context.WithTimeout(context.TODO(), 10*time.Second)
+
 	var chanErrs []chan error = []chan error{
 		make(chan error),
 	}
 
 	usersIndexes := []mongo.IndexModel{
 		{
-			Options: options.Index().SetUnique(true),
-			Keys:    bsonx.Doc{{Key: "username", Value: bsonx.String("text")}},
-		},
-		{
-			Options: options.Index().SetUnique(true),
-			Keys:    bsonx.Doc{{Key: "username", Value: bsonx.String("text")}},
+			Options: options.Index().SetName("usernameIndex").SetUnique(true).SetDefaultLanguage("en").SetBackground(true),
+			Keys:    bson.M{"username": 1},
 		},
 	}
 
-	defer closeChannels(chanErrs)
+	defer closeChannels(ctxCancel, chanErrs)
 
-	go createIndexes(db.Collection(CollectionUsers), usersIndexes, chanErrs[0])
+	go createIndexes(ctx, db.Collection(CollectionUsers), usersIndexes, chanErrs[0])
 
 	for _, c := range chanErrs {
-		if err := <-c; err != nil {
-			logger.DatabaseFatal("Failed creating indexes, error: %s", err)
+		var err error
+		if err = <-c; err != nil {
+			logger.DatabaseFatal("Error indexes: %s", err)
 		}
 	}
-	logger.Database("Created indexes!")
+	logger.Database("Created/Updated indexes!")
 }
 
-func createIndexes(col *mongo.Collection, indexes []mongo.IndexModel, c chan error) {
-	if existIndexes := checkIndexes(col, indexes); existIndexes {
-		c <- nil
+func dropAllIndexes(ctx context.Context, col *mongo.Collection) error {
+	var err error
+	var indexes []interface{}
+	var cursor *mongo.Cursor
+	cursor, err = col.Indexes().List(ctx)
+
+	if err != nil {
+		return errors.Errorf("Listing Indexes %v", err)
+	}
+
+	err = cursor.All(ctx, &indexes)
+
+	if err != nil {
+		return errors.Errorf("Indexes cursor %v", err)
+	}
+
+	if len(indexes) != 0 {
+		_, err = col.Indexes().DropAll(ctx)
+		if err != nil {
+			return errors.Errorf("Dropping Indexes %v", err)
+		}
+	}
+
+	return err
+}
+
+func createIndexes(ctx context.Context, col *mongo.Collection, indexes []mongo.IndexModel, c chan error) {
+	if err := dropAllIndexes(ctx, col); err != nil {
+		c <- err
 		return
 	}
-	_, err := col.Indexes().CreateMany(context.TODO(), indexes, options.CreateIndexes().SetMaxTime(10*time.Second))
-	c <- err
+
+	if _, err := col.Indexes().CreateMany(ctx, indexes); err != nil {
+		c <- errors.Errorf("Creating Indexes %v", err)
+	}
+
+	c <- nil
 	return
 }
 
-func checkIndexes(col *mongo.Collection, indexes []mongo.IndexModel) bool {
-	cursor, _ := col.Indexes().List(context.TODO())
-
-	var alreadyExist bool = false
-
-	for cursor.Next(context.TODO()) {
-		current, _ := cursor.Current.Values()
-		logger.Database("Currents %s", current)
-
-		for _, curr := range current {
-			logger.Database("Cursos %s", curr.String())
-		}
-	}
-
-	return alreadyExist
-}
-
-func closeChannels(chans []chan error) {
+func closeChannels(ctxCancel context.CancelFunc, chans []chan error) {
 	for _, c := range chans {
 		close(c)
+		ctxCancel()
 	}
 }

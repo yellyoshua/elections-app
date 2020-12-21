@@ -21,15 +21,6 @@ type Repo struct {
 
 var db *mongo.Database
 
-// InitializeMock start mock database connection
-func InitializeMock() {
-	db = connect()
-
-	if db == nil {
-		logger.DatabaseFatal("Database connection is nil")
-	}
-}
-
 // Initialize start database connection
 func Initialize() {
 	db = connect()
