@@ -10,7 +10,8 @@ import (
 
 // Repositories established connection to database
 func Repositories() {
-	repository.Initialize()
+	var indexes bool = true
+	repository.Initialize(indexes)
 }
 
 // Modules setup modules confs and variables

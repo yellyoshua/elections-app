@@ -12,8 +12,18 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+// Steps _
+type Steps interface {
+	SetupIndexes()
+}
+
+type step struct {
+	db *mongo.Database
+}
+
 // Connect connection with database
-func connect() *mongo.Database {
+func connect() (Steps, *mongo.Database) {
+	var steps = new(step)
 	dbName := os.Getenv("DATABASE_NAME")
 	mongoURI := os.Getenv("DATABASE_URI")
 
@@ -33,25 +43,29 @@ func connect() *mongo.Database {
 
 	if err != nil {
 		logger.DatabaseFatal("Error connection database error: %v", err)
-		return nil
+		steps.db = nil
+		return steps, nil
 	}
 
 	// Check the connection
 	if err = client.Ping(cxtTimeout, nil); err != nil {
 		logger.DatabaseFatal("Error ping database error: %v", err)
-		return nil
+		steps.db = nil
+		return steps, nil
 	}
 
 	db := client.Database(dbName)
 
-	setupIndexes(cxtTimeout, db)
-
-	return db
+	steps.db = db
+	return steps, db
 }
 
-func setupIndexes(ctx context.Context, db *mongo.Database) {
+// SetupIndexes _
+func (s *step) SetupIndexes() {
 	ctx, ctxCancel := context.WithTimeout(context.TODO(), 10*time.Second)
+	db := s.db
 
+	defer ctxCancel()
 	var chanErrs []chan error = []chan error{
 		make(chan error),
 	}
@@ -86,10 +100,14 @@ func dropAllIndexes(ctx context.Context, col *mongo.Collection) error {
 		return errors.Errorf("Listing Indexes %v", err)
 	}
 
-	err = cursor.All(ctx, &indexes)
+	for cursor.Next(ctx) {
+		var index interface{}
 
-	if err != nil {
-		return errors.Errorf("Indexes cursor %v", err)
+		err := cursor.Decode(&index)
+		if err != nil {
+			return errors.Errorf("Indexes cursor %v", err)
+		}
+		indexes = append(indexes, index)
 	}
 
 	if len(indexes) != 0 {
@@ -110,6 +128,7 @@ func createIndexes(ctx context.Context, col *mongo.Collection, indexes []mongo.I
 
 	if _, err := col.Indexes().CreateMany(ctx, indexes); err != nil {
 		c <- errors.Errorf("Creating Indexes %v", err)
+		return
 	}
 
 	c <- nil

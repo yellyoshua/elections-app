@@ -6,8 +6,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/yellyoshua/elections-app/logger"
 	"github.com/yellyoshua/elections-app/server/middlewares"
+	"github.com/yellyoshua/elections-app/server/modules/api"
 	"github.com/yellyoshua/elections-app/server/modules/graphql"
-	"github.com/yellyoshua/elections-app/server/services"
 )
 
 var router *gin.Engine
@@ -27,7 +27,7 @@ func Initialize(port string) *gin.Engine {
 }
 
 func start(port string) {
-	restSrv := services.NewRestService()
+	restSrv := api.NewRestService()
 	HandlerGraphql := graphql.Handler()
 
 	router.Use(middlewares.CorsMiddleware)

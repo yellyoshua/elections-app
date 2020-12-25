@@ -5,28 +5,27 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
+// ID        primitive.ObjectID `bson:"_id" json:"id,omitempty"`
+
 // User user
 type User struct {
-	ID        primitive.ObjectID `bson:"_id" json:"id,omitempty"`
-	Username  string             `bson:"username" json:"username"`
-	Name      string             `bson:"name" json:"name"`
-	Surname   string             `bson:"surname" json:"surname"`
-	Email     string             `bson:"email" json:"email"`
-	Password  string             `bson:"password" json:"password"`
-	Validated bool               `bson:"validated" json:"validated,omitempty"`
-	Birthday  int64              `bson:"birthday" json:"birthday,omitempty"`
-	// Created   int64              `bson:"created" json:"created"`
-	Profile primitive.ObjectID `bson:"profile" json:"profile"`
+	ID       primitive.ObjectID `bson:"_id,omitempty" json:"_id,omitempty"`
+	Name     string             `bson:"name" json:"name"`
+	Surname  string             `bson:"surname" json:"surname"`
+	Fullname string             `bson:"fullname" json:"fullname"`
+	Username string             `bson:"username" json:"username"`
+	Email    string             `bson:"email" json:"email"`
+	Verified bool               `bson:"verified" json:"verified,omitempty"`
+	Password string             `bson:"password" json:"password"`
+	Active   bool               `bson:"active" json:"active,omitempty"`
+	Created  int64              `bson:"created" json:"created,omitempty"`
 }
 
 // UserGQL _
 var UserGQL = graphql.NewObject(graphql.ObjectConfig{
 	Name: "User",
 	Fields: graphql.Fields{
-		"id": &graphql.Field{
-			Type: graphql.ID,
-		},
-		"username": &graphql.Field{
+		"_id": &graphql.Field{
 			Type: graphql.String,
 		},
 		"name": &graphql.Field{
@@ -35,36 +34,74 @@ var UserGQL = graphql.NewObject(graphql.ObjectConfig{
 		"surname": &graphql.Field{
 			Type: graphql.String,
 		},
+		"fullName": &graphql.Field{
+			Type: graphql.String,
+		},
+		"username": &graphql.Field{
+			Type: graphql.String,
+		},
 		"email": &graphql.Field{
 			Type: graphql.String,
 		},
-		"validated": &graphql.Field{
+		"verified": &graphql.Field{
 			Type: graphql.Boolean,
 		},
-		"birthday": &graphql.Field{
+		"active": &graphql.Field{
+			Type: graphql.Boolean,
+		},
+		"created": &graphql.Field{
 			Type: graphql.Int,
 		},
 	},
 })
 
-// UpdateUserGQL __
-var UpdateUserGQL = graphql.FieldConfigArgument{
-	"username": &graphql.ArgumentConfig{
-		Type: graphql.NewNonNull(graphql.String),
-	},
+// CreateUserGQL params graphql create user query
+var CreateUserGQL = graphql.FieldConfigArgument{
 	"name": &graphql.ArgumentConfig{
 		Type: graphql.NewNonNull(graphql.String),
 	},
 	"surname": &graphql.ArgumentConfig{
 		Type: graphql.NewNonNull(graphql.String),
 	},
+	"username": &graphql.ArgumentConfig{
+		Type: graphql.NewNonNull(graphql.String),
+	},
 	"email": &graphql.ArgumentConfig{
 		Type: graphql.NewNonNull(graphql.String),
 	},
-	"validated": &graphql.ArgumentConfig{
+	"password": &graphql.ArgumentConfig{
+		Type: graphql.NewNonNull(graphql.String),
+	},
+}
+
+// FindUser params graphql
+var FindUser = graphql.FieldConfigArgument{
+	"id": &graphql.ArgumentConfig{
+		Type: graphql.NewNonNull(graphql.String),
+	},
+}
+
+// UpdateUserGQL params graphql update user query
+var UpdateUserGQL = graphql.FieldConfigArgument{
+	"name": &graphql.ArgumentConfig{
+		Type: graphql.NewNonNull(graphql.String),
+	},
+	"surname": &graphql.ArgumentConfig{
+		Type: graphql.NewNonNull(graphql.String),
+	},
+	"fullName": &graphql.ArgumentConfig{
+		Type: graphql.NewNonNull(graphql.String),
+	},
+	"username": &graphql.ArgumentConfig{
+		Type: graphql.NewNonNull(graphql.String),
+	},
+	"email": &graphql.ArgumentConfig{
+		Type: graphql.NewNonNull(graphql.String),
+	},
+	"verified": &graphql.ArgumentConfig{
 		Type: graphql.NewNonNull(graphql.Boolean),
 	},
-	"birthday": &graphql.ArgumentConfig{
-		Type: graphql.NewNonNull(graphql.Int),
+	"active": &graphql.ArgumentConfig{
+		Type: graphql.NewNonNull(graphql.Boolean),
 	},
 }

@@ -1,4 +1,4 @@
-package services
+package api
 
 import (
 	"net/http"
@@ -6,6 +6,22 @@ import (
 
 	"github.com/gin-gonic/gin"
 )
+
+// REST _
+type REST interface {
+	HandlerHome(ctx *gin.Context)
+	HandlerAPI(ctx *gin.Context)
+	HandlerLoginUser(ctx *gin.Context)
+}
+
+// Service _
+type Service int
+
+// NewRestService instance services
+func NewRestService() REST {
+	service := new(Service)
+	return service
+}
 
 // HandlerHome rest handler home
 func (s *Service) HandlerHome(ctx *gin.Context) {
