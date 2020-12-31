@@ -74,15 +74,25 @@ var CreateUserGQL = graphql.FieldConfigArgument{
 	},
 }
 
-// FindUser params graphql
-var FindUser = graphql.FieldConfigArgument{
+// FindUserByIDGQL params graphql
+var FindUserByIDGQL = graphql.FieldConfigArgument{
 	"id": &graphql.ArgumentConfig{
+		Type: graphql.NewNonNull(graphql.String),
+	},
+}
+
+// FindUserByUsernameGQL params graphql
+var FindUserByUsernameGQL = graphql.FieldConfigArgument{
+	"username": &graphql.ArgumentConfig{
 		Type: graphql.NewNonNull(graphql.String),
 	},
 }
 
 // UpdateUserGQL params graphql update user query
 var UpdateUserGQL = graphql.FieldConfigArgument{
+	"userID": &graphql.ArgumentConfig{
+		Type: graphql.NewNonNull(graphql.String),
+	},
 	"name": &graphql.ArgumentConfig{
 		Type: graphql.NewNonNull(graphql.String),
 	},

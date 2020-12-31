@@ -85,7 +85,7 @@ func TestRepository(t *testing.T) {
 	sample1Update := sample1
 	sample1Update.Name = "UpdatedYoshua1"
 	sample1Filter := bson.M{"_id": sample1.ID}
-	updateSample1 := primitive.M{"name": sample1Update.Name}
+	updateSample1 := map[string]interface{}{"name": sample1Update.Name}
 	if err := repo.UpdateOne(sample1Filter, updateSample1); err != nil {
 		t.Fatalf("Error updating sample1 %v", err)
 	}
@@ -96,7 +96,7 @@ func TestRepository(t *testing.T) {
 	sample2Update := sample2
 	sample2Update.Name = "UpdatedYoshua2"
 	sample2Filter := bson.M{"_id": sample2.ID}
-	updateSample2 := primitive.M{"name": sample2Update.Name}
+	updateSample2 := map[string]interface{}{"name": sample2Update.Name}
 	if err := repo.UpdateOne(sample2Filter, updateSample2); err != nil {
 		t.Fatalf("Error updating sample2 %v", err)
 	}
@@ -107,7 +107,7 @@ func TestRepository(t *testing.T) {
 	sample3Update := sample3
 	sample3Update.Name = "UpdatedYoshua3"
 	sample3Filter := bson.M{"_id": sample3.ID}
-	updateSample3 := primitive.M{"name": sample3Update.Name}
+	updateSample3 := map[string]interface{}{"name": sample3Update.Name}
 	if err := repo.UpdateOne(sample3Filter, updateSample3); err != nil {
 		t.Fatalf("Error updating sample3 %v", err)
 	}
@@ -115,7 +115,7 @@ func TestRepository(t *testing.T) {
 		t.Fatal("Sample3 not updated")
 	}
 
-	if err := repo.UpdateOne(primitive.M{"name": "SampleNotFound"}, primitive.M{"name": "SampleNotFound"}); err.Error() != "No matched documents" {
+	if err := repo.UpdateOne(map[string]interface{}{"name": "SampleNotFound"}, map[string]interface{}{"name": "SampleNotFound"}); err.Error() != "No matched documents" {
 		t.Fatal("Error should not returned a error ???")
 	}
 }

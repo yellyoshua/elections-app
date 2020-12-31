@@ -23,10 +23,11 @@ var graphqlService GRAPHQL
 type GRAPHQL interface {
 	// Queries
 	GetUsers(params gql.ResolveParams) (interface{}, error)
-	FindUser(params gql.ResolveParams) (interface{}, error)
+	FindUserByID(params gql.ResolveParams) (interface{}, error)
+	FindUserByUsername(params gql.ResolveParams) (interface{}, error)
 	CreateUser(params gql.ResolveParams) (interface{}, error)
 	// Mutators
-	UpdateUsers(params gql.ResolveParams) (interface{}, error)
+	UpdateUser(params gql.ResolveParams) (interface{}, error)
 }
 
 // Initialize func to init graphql module
@@ -36,10 +37,10 @@ func Initialize() GRAPHQL {
 }
 
 // Service _
-type Service int
+type Service struct{}
 
 // NewGraphqlService intance service
-func NewGraphqlService() GRAPHQL {
+func NewGraphqlService() *Service {
 	service := new(Service)
 	return service
 }
@@ -76,7 +77,7 @@ func setupSchemas(graphqlService GRAPHQL) (gql.Schema, error) {
 				Type:        models.UserGQL, // the return type for this field
 				Description: "Update a user",
 				Args:        models.UpdateUserGQL,
-				Resolve:     graphqlService.UpdateUsers,
+				Resolve:     graphqlService.UpdateUser,
 			},
 		},
 	})
@@ -89,10 +90,15 @@ func setupSchemas(graphqlService GRAPHQL) (gql.Schema, error) {
 				Description: "Get users",
 				Resolve:     graphqlService.GetUsers,
 			},
-			"findUser": &graphql.Field{
+			"findUserByID": &graphql.Field{
 				Type:    models.UserGQL,
-				Args:    models.FindUser,
-				Resolve: graphqlService.FindUser,
+				Args:    models.FindUserByIDGQL,
+				Resolve: graphqlService.FindUserByID,
+			},
+			"findUserByUsername": &graphql.Field{
+				Type:    models.UserGQL,
+				Args:    models.FindUserByUsernameGQL,
+				Resolve: graphqlService.FindUserByUsername,
 			},
 			"createUser": &graphql.Field{
 				Type:    models.UserGQL,
@@ -122,8 +128,8 @@ func (s *Service) GetUsers(params gql.ResolveParams) (interface{}, error) {
 	return users, nil
 }
 
-// FindUser __
-func (s *Service) FindUser(params gql.ResolveParams) (interface{}, error) {
+// FindUserByID __
+func (s *Service) FindUserByID(params gql.ResolveParams) (interface{}, error) {
 	var err error
 	var userID primitive.ObjectID
 
@@ -144,6 +150,21 @@ func (s *Service) FindUser(params gql.ResolveParams) (interface{}, error) {
 	return user, nil
 }
 
+// FindUserByUsername __
+func (s *Service) FindUserByUsername(params gql.ResolveParams) (interface{}, error) {
+
+	col := repository.NewRepository(repository.CollectionUsers)
+	username, _ := params.Args["username"].(string)
+
+	var user models.User
+	err := col.FindOne(bson.M{"username": username}, &user)
+
+	if err != nil {
+		return nil, err
+	}
+	return user, nil
+}
+
 // CreateUser __
 func (s *Service) CreateUser(params gql.ResolveParams) (interface{}, error) {
 	col := repository.NewRepository(repository.CollectionUsers)
@@ -153,7 +174,7 @@ func (s *Service) CreateUser(params gql.ResolveParams) (interface{}, error) {
 	email, _ := params.Args["email"].(string)
 	password, _ := params.Args["password"].(string)
 
-	user := &models.User{
+	user := models.User{
 		Name:     name,
 		Surname:  surname,
 		Username: username,
@@ -166,17 +187,36 @@ func (s *Service) CreateUser(params gql.ResolveParams) (interface{}, error) {
 	}
 
 	id, err := col.InsertOne(user)
+	if err != nil {
+		return nil, err
+	}
+
 	user.ID = id
 	return user, err
 }
 
-// UpdateUsers {params models.UpdateUserGQL}
-func (s *Service) UpdateUsers(params gql.ResolveParams) (interface{}, error) {
-	username, _ := params.Args["username"].(string)
+// UpdateUser {params models.UpdateUserGQL}
+func (s *Service) UpdateUser(params gql.ResolveParams) (interface{}, error) {
+	var err error
+	var userID primitive.ObjectID
 
-	return models.User{
-		Username: username,
-	}, nil
+	col := repository.NewRepository(repository.CollectionUsers)
+	userIDString, _ := params.Args["userID"].(string)
+	delete(params.Args, "userID")
+
+	userID, err = primitive.ObjectIDFromHex(userIDString)
+	if err != nil {
+		return nil, err
+	}
+
+	err = col.UpdateOne(bson.M{"_id": userID}, params.Args)
+
+	if err != nil {
+		return nil, err
+	}
+
+	params.Args["_id"] = userID
+	return params.Args, nil
 }
 
 func checkError(err error) {

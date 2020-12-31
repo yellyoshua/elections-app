@@ -15,7 +15,7 @@ import (
 type Repository interface {
 	Collection() *mongo.Collection
 	Database() *mongo.Database
-	UpdateOne(filter interface{}, update primitive.M) error
+	UpdateOne(filter interface{}, update map[string]interface{}) error
 	FindOne(filter interface{}, dest interface{}) error
 	Find(filter interface{}, dest interface{}) error
 	FindByID(id primitive.ObjectID, dest interface{}) error
@@ -131,8 +131,12 @@ func (r *Repo) InsertOne(data interface{}) (primitive.ObjectID, error) {
 	defer cancel()
 
 	result, err := db.Collection(r.collection).InsertOne(ctx, data)
-	id, _ := result.InsertedID.(primitive.ObjectID)
 
+	if err != nil {
+		return primitive.ObjectID{}, err
+	}
+
+	id, _ := result.InsertedID.(primitive.ObjectID)
 	return id, err
 }
 
@@ -146,10 +150,14 @@ func (r *Repo) InsertMany(data []interface{}) error {
 }
 
 // UpdateOne _
-func (r *Repo) UpdateOne(filter interface{}, update primitive.M) error {
-	updater, err := db.Collection(r.collection).UpdateOne(context.TODO(), filter, bson.M{"$set": update})
+func (r *Repo) UpdateOne(filter interface{}, update map[string]interface{}) error {
+	updater, err := db.Collection(r.collection).UpdateOne(context.TODO(), filter, bson.M{"$set": primitive.M(update)})
 
-	if updater.ModifiedCount == 0 {
+	if err != nil {
+		return err
+	}
+
+	if updater.MatchedCount == 0 {
 		return errors.New("No matched documents")
 	}
 	return err
