@@ -6,6 +6,7 @@ import (
 )
 
 var fatalPrefix string = "fatal - "
+var debugPrefix string = "debug - "
 var infoPrefix string = "info - "
 
 // NewLogger Initialize new log.Logger
@@ -19,8 +20,14 @@ func Info(format string, v ...interface{}) {
 	logger.Printf(format, v...)
 }
 
+// Debug logger debug logs
+func Debug(format string, v ...interface{}) {
+	logger := NewLogger(infoPrefix)
+	logger.Printf(format, v...)
+}
+
 // Fatal logger fatal logs
 func Fatal(format string, v ...interface{}) {
-	logger := NewLogger(fatalPrefix)
+	logger := NewLogger(infoPrefix)
 	logger.Fatalf(format, v...)
 }
