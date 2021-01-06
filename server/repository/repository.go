@@ -42,14 +42,14 @@ func Initialize(indexes bool) {
 	}
 
 	if db == nil {
-		logger.DatabaseFatal("Database connection is nil")
+		logger.Fatal("Database connection is nil")
 	}
 }
 
 // NewRepository __
 func NewRepository(collection string) Repository {
 	if db == nil {
-		logger.DatabaseFatal("Need initialize repository connection to database")
+		logger.Fatal("Need initialize repository connection to database")
 	}
 
 	repo := new(Repo)

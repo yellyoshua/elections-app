@@ -49,14 +49,14 @@ func NewGraphqlService() *Service {
 func Handler() http.Handler {
 
 	if graphqlService == nil {
-		logger.ServerFatal("Need initialize graphql module")
+		logger.Fatal("Need initialize graphql module")
 	}
 
 	schema, err := setupSchemas(graphqlService)
 
 	// TODO: Test this exeption!
 	if err != nil {
-		logger.ServerFatal("Error creating graphql schema config, error: %v", err)
+		logger.Fatal("Error creating graphql schema config, error: %v", err)
 	}
 
 	graphqlHandler := gqlhandler.New(&gqlhandler.Config{
@@ -221,6 +221,6 @@ func (s *Service) UpdateUser(params gql.ResolveParams) (interface{}, error) {
 
 func checkError(err error) {
 	if err != nil {
-		logger.ServerFatal("repository error: %v", err)
+		logger.Fatal("Repository error: %v", err)
 	}
 }

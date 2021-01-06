@@ -8,5 +8,5 @@ import (
 // Initialize create and setup modules
 func Initialize() {
 	graphql.Initialize()
-	logger.Server("Modules initialized!")
+	logger.Info("Modules initialized")
 }

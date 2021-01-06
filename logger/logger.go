@@ -5,36 +5,22 @@ import (
 	"os"
 )
 
-var databasePrefix string = "[DATABASE] - "
-var fatalDatabasePrefix string = "[FATAL DATABASE] - "
-var serverPrefix string = "[SERVER] - "
-var fatalServerPrefix string = "[FATAL SERVER] - "
+var fatalPrefix string = "fatal - "
+var infoPrefix string = "info - "
 
 // NewLogger Initialize new log.Logger
 func NewLogger(prefix string) *log.Logger {
 	return log.New(os.Stdout, prefix, log.LstdFlags)
 }
 
-// Database logger for database
-func Database(format string, v ...interface{}) {
-	logger := NewLogger(databasePrefix)
+// Info logger info logs
+func Info(format string, v ...interface{}) {
+	logger := NewLogger(infoPrefix)
 	logger.Printf(format, v...)
 }
 
-// DatabaseFatal fatal logger for database
-func DatabaseFatal(format string, v ...interface{}) {
-	logger := NewLogger(fatalDatabasePrefix)
-	logger.Fatalf(format, v...)
-}
-
-// Server logger for server actions and methods
-func Server(format string, v ...interface{}) {
-	logger := NewLogger(serverPrefix)
-	logger.Printf(format, v...)
-}
-
-// ServerFatal fatal logger for server actions and methods
-func ServerFatal(format string, v ...interface{}) {
-	logger := NewLogger(fatalServerPrefix)
+// Fatal logger fatal logs
+func Fatal(format string, v ...interface{}) {
+	logger := NewLogger(fatalPrefix)
 	logger.Fatalf(format, v...)
 }

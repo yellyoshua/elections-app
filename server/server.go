@@ -20,7 +20,7 @@ var UploadFolder string = "public/uploads"
 
 // Initialize create a server and database connection, this return a gin-gonic router
 func Initialize(port string) *gin.Engine {
-	logger.Server("Starting GIN-GONIC server")
+	logger.Info("Starting GIN-GONIC server")
 	router = gin.Default()
 	start(port)
 	return router

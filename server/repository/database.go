@@ -35,21 +35,21 @@ func connect() (Steps, *mongo.Database) {
 	// Set client URI
 	clientURI := clientOpts.ApplyURI(mongoURI)
 
-	logger.Database("Connecting to database")
+	logger.Info("Connecting to database")
 	defer ctxCancel()
 
 	// Connect to MongoDB
 	client, err := mongo.Connect(cxtTimeout, clientURI)
 
 	if err != nil {
-		logger.DatabaseFatal("Error connection database error: %v", err)
+		logger.Fatal("Error connection database error: %v", err)
 		steps.db = nil
 		return steps, nil
 	}
 
 	// Check the connection
 	if err = client.Ping(cxtTimeout, nil); err != nil {
-		logger.DatabaseFatal("Error ping database error: %v", err)
+		logger.Fatal("Error ping database error: %v", err)
 		steps.db = nil
 		return steps, nil
 	}
@@ -84,10 +84,10 @@ func (s *step) SetupIndexes() {
 	for _, c := range chanErrs {
 		var err error
 		if err = <-c; err != nil {
-			logger.DatabaseFatal("Error indexes: %s", err)
+			logger.Fatal("Error indexes: %s", err)
 		}
 	}
-	logger.Database("Created/Updated indexes!")
+	logger.Info("Database created/updated indexes!")
 }
 
 func dropAllIndexes(ctx context.Context, col *mongo.Collection) error {
