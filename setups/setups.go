@@ -1,8 +1,6 @@
 package setups
 
 import (
-	"os"
-
 	"github.com/yellyoshua/elections-app/server"
 	"github.com/yellyoshua/elections-app/server/modules"
 	"github.com/yellyoshua/elections-app/server/repository"
@@ -21,6 +19,5 @@ func Modules() {
 
 // Server start gin-gonic router
 func Server() {
-	var port string = os.Getenv("PORT")
-	server.Initialize(port)
+	server.Initialize()
 }

@@ -3,7 +3,7 @@ package setups
 import (
 	"os"
 
-	"github.com/yellyoshua/elections-app/server"
+	"github.com/yellyoshua/elections-app/server/modules/api"
 )
 
 type folder struct {
@@ -15,8 +15,8 @@ type folder struct {
 func Folders() {
 
 	folders := []folder{
-		{path: server.PublicFolder, permissions: 0755},
-		{path: server.UploadFolder, permissions: 0755},
+		{path: api.PublicFolder, permissions: 0755},
+		{path: api.UploadFolder, permissions: 0755},
 	}
 
 	for _, f := range folders {

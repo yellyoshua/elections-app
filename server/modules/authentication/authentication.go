@@ -13,7 +13,7 @@ func Initialize() {}
 // Auth interface of Authentication module
 type Auth interface {
 	CreateToken(tokenValue string) (string, error)
-	VerifyToken(tokenString string, resolver func(tokenValue string, err error))
+	VerifyToken(tokenString string) (string, error)
 	GetSecret() string
 }
 
@@ -39,7 +39,7 @@ func (j *JWT) GetSecret() string {
 }
 
 // VerifyToken method decript with secret key and return in callback
-func (j *JWT) VerifyToken(tokenString string, resolver func(tokenValue string, err error)) {
+func (j *JWT) VerifyToken(tokenString string) (string, error) {
 	var tokenValue string
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
@@ -49,18 +49,15 @@ func (j *JWT) VerifyToken(tokenString string, resolver func(tokenValue string, e
 	})
 
 	if err != nil {
-		resolver(tokenValue, err)
-		return
+		return tokenValue, err
 	}
 
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
 		tokenValue = claims["sub"].(string)
-		resolver(tokenValue, nil)
-		return
+		return tokenValue, nil
 	}
 
-	resolver(tokenValue, fmt.Errorf("Invaled token"))
-	return
+	return tokenValue, fmt.Errorf("Invaled token")
 }
 
 // CreateToken method create a token string encoded with secret key

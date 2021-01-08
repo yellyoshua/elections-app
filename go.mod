@@ -5,6 +5,7 @@ go 1.15
 require (
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/gin-gonic/gin v1.6.3
+	github.com/go-playground/assert/v2 v2.0.1
 	github.com/graphql-go/graphql v0.7.9
 	github.com/graphql-go/graphql-go-handler v0.2.3
 	github.com/graphql-go/handler v0.2.3 // indirect
