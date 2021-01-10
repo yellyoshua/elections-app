@@ -49,7 +49,7 @@ func NewGraphqlService() *Service {
 func Handler() http.Handler {
 
 	if graphqlService == nil {
-		logger.Fatal("Need initialize graphql module")
+		logger.Fatal("Not initialized graphql module")
 	}
 
 	schema, err := setupSchemas(graphqlService)

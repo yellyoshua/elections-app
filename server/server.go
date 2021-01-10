@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/yellyoshua/elections-app/server/modules/api"
+	"github.com/yellyoshua/elections-app/server/api"
 	"github.com/yellyoshua/elections-app/server/modules/graphql"
 )
 

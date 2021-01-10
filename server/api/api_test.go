@@ -9,9 +9,8 @@ import (
 )
 
 // gin-gonic solve test. This test no pass
+// TODO: test api handlers
 func TestHandlerHome(t *testing.T) {
-	// _ := NewRestService()
-	Initialize()
 	NewRestService(func(router *gin.Engine) {
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("GET", "/", nil)

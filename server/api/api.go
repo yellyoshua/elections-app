@@ -10,26 +10,19 @@ import (
 	"github.com/yellyoshua/elections-app/server/middlewares"
 )
 
-var router *gin.Engine
-
 // PublicFolder path for serve static files
 var PublicFolder string = "public"
 
 // UploadFolder path for serve static files
 var UploadFolder string = "public/uploads"
 
-// Initialize _
-func Initialize() {
-	ginServ := gin.New()
-	ginServ.Use(gin.Logger())
-	ginServ.Use(gin.Recovery())
-
-	router = ginServ
-}
-
 // NewRestService instance services
 func NewRestService(callback func(router *gin.Engine)) {
 	var defaultRoute string = ""
+
+	router := gin.New()
+	router.Use(gin.Logger())
+	router.Use(gin.Recovery())
 
 	api := router.Group("/api")
 
@@ -44,14 +37,18 @@ func NewRestService(callback func(router *gin.Engine)) {
 	router.POST("/auth/local", middlewares.BodyLoginUser, handlerLoginUser)
 	callback(router)
 
-	server := createServer()
+	server := createServer(router)
 	if err := server.ListenAndServe(); err != nil {
 		logger.Fatal("Error listen server: %v", err)
 	}
 }
 
-func createServer() *http.Server {
+func createServer(router *gin.Engine) *http.Server {
 	var port string = os.Getenv("PORT")
+
+	if len(port) == 0 {
+		port = "3000"
+	}
 
 	server := new(http.Server)
 	server.Addr = ":" + port
