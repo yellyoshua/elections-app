@@ -1,7 +1,14 @@
 package main
 
 import (
-	"github.com/yellyoshua/elections-app/setups"
+	"os"
+
+	"github.com/joho/godotenv"
+	"github.com/yellyoshua/elections-app/api"
+	"github.com/yellyoshua/elections-app/logger"
+	"github.com/yellyoshua/elections-app/modules"
+	"github.com/yellyoshua/elections-app/modules/graphql"
+	"github.com/yellyoshua/elections-app/repository"
 )
 
 func main() {
