@@ -22,12 +22,18 @@ func Info(format string, v ...interface{}) {
 
 // Debug logger debug logs
 func Debug(format string, v ...interface{}) {
-	logger := NewLogger(infoPrefix)
+	logger := NewLogger(debugPrefix)
 	logger.Printf(format, v...)
 }
 
-// Fatal logger fatal logs
+// Fatal logger fatal logs and exit
 func Fatal(format string, v ...interface{}) {
-	logger := NewLogger(infoPrefix)
+	logger := NewLogger(fatalPrefix)
 	logger.Fatalf(format, v...)
+}
+
+// FatalInfo logger fatal logs
+func FatalInfo(format string, v ...interface{}) {
+	logger := NewLogger(fatalPrefix)
+	logger.Printf(format, v...)
 }

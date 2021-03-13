@@ -6,10 +6,9 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/gin-gonic/gin"
-	"github.com/yellyoshua/elections-app/server/models"
-	"github.com/yellyoshua/elections-app/server/modules/authentication"
-	"github.com/yellyoshua/elections-app/server/repository"
+	"github.com/yellyoshua/elections-app/models"
+	"github.com/yellyoshua/elections-app/modules/authentication"
+	"github.com/yellyoshua/elections-app/repository"
 	"go.mongodb.org/mongo-driver/bson"
 	"gopkg.in/validator.v2"
 )
@@ -29,10 +28,9 @@ func bearerExtractToken(bearer string) string {
 }
 
 // AuthRequiredMiddleware _
-func AuthRequiredMiddleware(ctx *gin.Context) {
+func AuthRequiredMiddleware(w http.ResponseWriter, r *http.Request) error {
 	var session models.Session
-	statusUnauthorized := http.StatusUnauthorized
-	authorization := ctx.GetHeader("Authorization")
+	authorization := r.Header.Get("Authorization")
 	token := bearerExtractToken(authorization)
 
 	col := repository.NewRepository(repository.CollectionSessions)
@@ -42,28 +40,29 @@ func AuthRequiredMiddleware(ctx *gin.Context) {
 	_, errToken := auth.VerifyToken(token)
 
 	if errToken != nil {
-		ctx.String(statusUnauthorized, "Unauthorized")
-		ctx.AbortWithStatus(statusUnauthorized)
-	} else {
-		if session.Token != token {
-			ctx.String(statusUnauthorized, "Session Expired")
-			ctx.AbortWithStatus(statusUnauthorized)
-		}
-		ctx.Next()
+		return fmt.Errorf("Unauthorized")
 	}
+
+	if session.Token != token {
+		return fmt.Errorf("Unauthorized")
+	}
+
+	return nil
 }
 
 // CorsMiddleware habilitate external request
-func CorsMiddleware(ctx *gin.Context) {
-	ctx.Header("Access-Control-Allow-Origin", "*")
-	ctx.Header("Server", "Powered with Golang")
-	ctx.Next()
+func CorsMiddleware(w http.ResponseWriter, r *http.Request) error {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+	w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
+	w.Header().Set("Server", "Powered with Golang")
+	return nil
 }
 
 // BodyLoginUser handle body request and valid fields
-func BodyLoginUser(ctx *gin.Context) {
+func BodyLoginUser(w http.ResponseWriter, r *http.Request) error {
 	var user models.BodyLoginUser
-	body := ctx.Request.Body
+	body := r.Body
 	userValidator := validator.NewValidator()
 
 	json.NewDecoder(body).Decode(&user)
@@ -76,13 +75,8 @@ func BodyLoginUser(ctx *gin.Context) {
 		// the request did not include all of the User
 		// struct fields, so send a http.StatusBadRequest
 		// back or something
-		responseErrScheme(ctx, errs)
-	} else {
-		ctx.Next()
-	}
-}
 
-func responseErrScheme(ctx *gin.Context, errs error) {
-	ctx.JSON(http.StatusInternalServerError, errs)
-	ctx.AbortWithStatus(http.StatusInternalServerError)
+		return errs
+	}
+	return nil
 }

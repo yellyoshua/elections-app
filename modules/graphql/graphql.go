@@ -9,8 +9,8 @@ import (
 	gql "github.com/graphql-go/graphql"
 	gqlhandler "github.com/graphql-go/graphql-go-handler"
 	"github.com/yellyoshua/elections-app/logger"
-	"github.com/yellyoshua/elections-app/server/models"
-	"github.com/yellyoshua/elections-app/server/repository"
+	"github.com/yellyoshua/elections-app/models"
+	"github.com/yellyoshua/elections-app/repository"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )

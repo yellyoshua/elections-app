@@ -10,11 +10,10 @@ import (
 	"os"
 	"testing"
 
-	"github.com/gin-gonic/gin"
-	"github.com/go-playground/assert/v2"
-	"github.com/yellyoshua/elections-app/server/models"
-	"github.com/yellyoshua/elections-app/server/modules/authentication"
-	"github.com/yellyoshua/elections-app/server/repository"
+	"github.com/stretchr/testify/assert"
+	"github.com/yellyoshua/elections-app/models"
+	"github.com/yellyoshua/elections-app/modules/authentication"
+	"github.com/yellyoshua/elections-app/repository"
 )
 
 var secretTest string = "secret_string"
@@ -22,9 +21,7 @@ var secretTest string = "secret_string"
 var auth authentication.Auth = authentication.NewAuthentication(secretTest)
 
 func TestBodyLoginUser(t *testing.T) {
-	router := setupRouter()
-
-	wrongBodyForm := func(router *gin.Engine) {
+	wrongBodyForm := func() {
 		w := httptest.NewRecorder()
 		body := map[string]interface{}{
 			"password":   "",
@@ -32,15 +29,13 @@ func TestBodyLoginUser(t *testing.T) {
 		}
 
 		form, _ := json.Marshal(body)
-		req, _ := http.NewRequest(http.MethodPost, "/login", bytes.NewReader(form))
+		req, _ := http.NewRequest(http.MethodPost, "/login", bytes.NewBuffer(form))
 
-		router.ServeHTTP(w, req)
-
-		assert.Equal(t, http.StatusInternalServerError, w.Code)
-		assert.Equal(t, "{\"Identifier\":[\"zero value\"],\"Password\":[\"zero value\"]}", w.Body.String())
+		err := BodyLoginUser(w, req)
+		assert.NotEqual(t, nil, err)
 	}
 
-	correctBodyForm := func(router *gin.Engine) {
+	correctBodyForm := func() {
 		w := httptest.NewRecorder()
 		body := map[string]interface{}{
 			"password":   "somepassword",
@@ -48,49 +43,31 @@ func TestBodyLoginUser(t *testing.T) {
 		}
 
 		form, _ := json.Marshal(body)
-		req, _ := http.NewRequest(http.MethodPost, "/login", bytes.NewReader(form))
+		req, _ := http.NewRequest(http.MethodPost, "/login", bytes.NewBuffer(form))
 
-		router.ServeHTTP(w, req)
+		err := BodyLoginUser(w, req)
 
-		assert.Equal(t, http.StatusOK, w.Code)
-		assert.Equal(t, "Powered with Golang", w.Body.String())
+		assert.Equal(t, nil, err)
 	}
 
-	wrongBodyForm(router)
-	correctBodyForm(router)
+	wrongBodyForm()
+	correctBodyForm()
 }
 
 func TestCorsMiddleware(t *testing.T) {
-	router := setupRouter()
-
 	w := httptest.NewRecorder()
 
 	req, _ := http.NewRequest(http.MethodGet, "/cors", nil)
 
-	router.ServeHTTP(w, req)
+	if err := CorsMiddleware(w, req); err != nil {
+		t.Errorf("Error with cors middleware -> %s", err)
+	}
 
 	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Equal(t, "Powered with Golang", w.Body.String())
 	assert.Equal(t, "*", w.Header().Get("Access-Control-Allow-Origin"))
 	assert.Equal(t, "Powered with Golang", w.Header().Get("Server"))
 }
 
-func TestResponseErrScheme(t *testing.T) {
-	router := setupRouter()
-	router.GET("/error", func(ctx *gin.Context) {
-		responseErrScheme(ctx, fmt.Errorf("ERROR"))
-	})
-
-	w := httptest.NewRecorder()
-
-	req, _ := http.NewRequest(http.MethodGet, "/error", nil)
-
-	router.ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusInternalServerError, w.Code)
-	assert.Equal(t, "{}", w.Body.String())
-
-}
 func TestBearerExtractToken(t *testing.T) {
 	withBearer := func(t *testing.T) {
 		expected := "eee-fff-ggg"
@@ -113,7 +90,6 @@ func TestBearerExtractToken(t *testing.T) {
 
 func TestMiddlewareAuth(t *testing.T) {
 	setupTests()
-	router := setupRouter()
 	auth := authentication.NewAuthentication(secretTest)
 	col := repository.NewRepository(repository.CollectionSessions)
 	col.Database().Drop(context.TODO())
@@ -135,20 +111,20 @@ func TestMiddlewareAuth(t *testing.T) {
 		col.InsertOne(session)
 	}
 
-	unauthorized := func(router *gin.Engine) {
+	unauthorized := func() {
 		token := "Bearer asdasd"
 		w := httptest.NewRecorder()
 
 		req, _ := http.NewRequest(http.MethodGet, "/api", nil)
 		req.Header.Add("Authorization", token)
 
-		router.ServeHTTP(w, req)
+		AuthRequiredMiddleware(w, req)
 
 		assert.Equal(t, http.StatusUnauthorized, w.Code)
 		assert.Equal(t, "Unauthorized", w.Body.String())
 	}
 
-	authorized := func(router *gin.Engine) {
+	authorized := func() {
 		for _, session := range sessions {
 			var (
 				token = fmt.Sprintf("Bearer %v", session.Token)
@@ -161,14 +137,14 @@ func TestMiddlewareAuth(t *testing.T) {
 			req, _ := http.NewRequest(http.MethodGet, "/api", nil)
 			req.Header.Add("Authorization", token)
 
-			router.ServeHTTP(w, req)
+			AuthRequiredMiddleware(w, req)
 
 			assert.Equal(t, http.StatusOK, w.Code)
 			assert.Equal(t, "Powered with Golang", w.Body.String())
 		}
 	}
 
-	authorizedExpired := func(router *gin.Engine) {
+	authorizedExpired := func() {
 		col.Drop() // Drop collection of sessions registered
 
 		for _, session := range sessions {
@@ -181,16 +157,16 @@ func TestMiddlewareAuth(t *testing.T) {
 			req, _ := http.NewRequest(http.MethodGet, "/api", nil)
 			req.Header.Add("Authorization", token)
 
-			router.ServeHTTP(w, req)
+			AuthRequiredMiddleware(w, req)
 
 			assert.Equal(t, http.StatusUnauthorized, w.Code)
 			assert.Equal(t, "Session Expired", w.Body.String())
 		}
 	}
 
-	unauthorized(router)
-	authorized(router)
-	authorizedExpired(router)
+	unauthorized()
+	authorized()
+	authorizedExpired()
 }
 
 func setupTests() {
@@ -199,26 +175,4 @@ func setupTests() {
 	os.Setenv("DATABASE_URI", "mongodb://root:dbpwd@localhost:27017")
 
 	repository.Initialize(indexes)
-}
-
-func handlerTestOK(ctx *gin.Context) {
-	ctx.String(http.StatusOK, "Powered with Golang")
-}
-
-func setupRouter() *gin.Engine {
-	var defaultRoute string = ""
-
-	router := gin.Default()
-	api := router.Group("/api")
-	cors := router.Group("/cors")
-	login := router.Group("/login")
-
-	login.Use(BodyLoginUser)
-	cors.Use(CorsMiddleware)
-	api.Use(AuthRequiredMiddleware)
-
-	login.POST(defaultRoute, handlerTestOK)
-	cors.GET(defaultRoute, handlerTestOK)
-	api.GET(defaultRoute, handlerTestOK)
-	return router
 }

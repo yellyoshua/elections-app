@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/graphql-go/graphql"
-	"github.com/yellyoshua/elections-app/server/repository"
+	"github.com/yellyoshua/elections-app/repository"
 	"golang.org/x/net/context"
 )
 

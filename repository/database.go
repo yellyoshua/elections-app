@@ -2,10 +2,10 @@ package repository
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/yellyoshua/elections-app/logger"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -97,7 +97,7 @@ func dropAllIndexes(ctx context.Context, col *mongo.Collection) error {
 	cursor, err = col.Indexes().List(ctx)
 
 	if err != nil {
-		return errors.Errorf("Listing Indexes %v", err)
+		return fmt.Errorf("Listing Indexes %v", err)
 	}
 
 	for cursor.Next(ctx) {
@@ -105,7 +105,7 @@ func dropAllIndexes(ctx context.Context, col *mongo.Collection) error {
 
 		err := cursor.Decode(&index)
 		if err != nil {
-			return errors.Errorf("Indexes cursor %v", err)
+			return fmt.Errorf("Indexes cursor %v", err)
 		}
 		indexes = append(indexes, index)
 	}
@@ -113,7 +113,7 @@ func dropAllIndexes(ctx context.Context, col *mongo.Collection) error {
 	if len(indexes) != 0 {
 		_, err = col.Indexes().DropAll(ctx)
 		if err != nil {
-			return errors.Errorf("Dropping Indexes %v", err)
+			return fmt.Errorf("Dropping Indexes %v", err)
 		}
 	}
 
@@ -127,7 +127,7 @@ func createIndexes(ctx context.Context, col *mongo.Collection, indexes []mongo.I
 	}
 
 	if _, err := col.Indexes().CreateMany(ctx, indexes); err != nil {
-		c <- errors.Errorf("Creating Indexes %v", err)
+		c <- fmt.Errorf("Creating Indexes %v", err)
 		return
 	}
 

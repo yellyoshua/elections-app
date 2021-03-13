@@ -1,3 +1,5 @@
 .env
 *.exe
 app
+gcs-service-test.json
+gcs-service.json

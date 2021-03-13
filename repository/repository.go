@@ -2,7 +2,7 @@ package repository
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"time"
 
 	"github.com/yellyoshua/elections-app/logger"
@@ -158,7 +158,7 @@ func (r *Repo) UpdateOne(filter interface{}, update map[string]interface{}) erro
 	}
 
 	if updater.MatchedCount == 0 {
-		return errors.New("No matched documents")
+		return fmt.Errorf("No matched documents")
 	}
 	return err
 }
