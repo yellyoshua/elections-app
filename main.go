@@ -5,7 +5,9 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/yellyoshua/elections-app/api"
+	"github.com/yellyoshua/elections-app/handlers"
 	"github.com/yellyoshua/elections-app/logger"
+	"github.com/yellyoshua/elections-app/middlewares"
 	"github.com/yellyoshua/elections-app/modules"
 	"github.com/yellyoshua/elections-app/modules/graphql"
 	"github.com/yellyoshua/elections-app/repository"
@@ -32,16 +34,19 @@ func setupModules() {
 
 // Server start gin-gonic router
 func setupServer() {
-	HandlerGraphql := graphql.Handler()
-
+	port := os.Getenv("PORT")
 	router := api.New()
 
-	router.GET("/graphql", HandlerGraphql.ServeHTTP)
-	router.POST("/graphql", HandlerGraphql.ServeHTTP)
-	router.PUT("/graphql", HandlerGraphql.ServeHTTP)
-	router.DELETE("/graphql", HandlerGraphql.ServeHTTP)
+	graphqlModule := graphql.Handler()
 
-	router.Listen("4000")
+	router.POST("/graphql", api.WrapperGinHandler(graphqlModule))
+	router.GET("/graphql", api.WrapperGinHandler(graphqlModule))
+	router.PUT("/graphql", api.WrapperGinHandler(graphqlModule))
+	router.DELETE("/graphql", api.WrapperGinHandler(graphqlModule))
+	router.Use(middlewares.AuthRequiredMiddleware).GET("/api", handlers.HandlerAPI)
+	router.Use(middlewares.BodyLoginUser).POST("/auth/local", handlers.HandlerLoginUser)
+	router.GET("/", handlers.HandlerHome)
+	router.Listen(port)
 }
 
 // Environments if not exist .env file load system environments or defaults!

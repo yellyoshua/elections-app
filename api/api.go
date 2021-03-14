@@ -1,12 +1,11 @@
 package api
 
 import (
-	"io"
 	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/yellyoshua/elections-app/middlewares"
+	"github.com/yellyoshua/elections-app/logger"
 )
 
 // PublicFolder path for serve static files
@@ -17,39 +16,45 @@ var UploadFolder string = "public/uploads"
 
 // API __
 type API interface {
-	GET(path string, handler Handler)
-	POST(path string, handler Handler)
-	PUT(path string, handler Handler)
-	DELETE(path string, handler Handler)
+	GET(path string, handler ...gin.HandlerFunc)
+	POST(path string, handler ...gin.HandlerFunc)
+	PUT(path string, handler ...gin.HandlerFunc)
+	DELETE(path string, handler ...gin.HandlerFunc)
+	Serve(w http.ResponseWriter, req *http.Request)
+	Use(middlewares ...gin.HandlerFunc) API
 	Listen(port string) error
 }
 
 // Handler __
-type Handler func(http.ResponseWriter, *http.Request)
+type Handler gin.HandlerFunc
 
 type apistruct struct {
-	router *gin.Engine
+	router      *gin.Engine
+	middlewares []gin.HandlerFunc
 }
 
 // New instace api service
 func New() API {
-	var defaultRoute string = ""
 	router := gin.New()
 	router.Use(gin.Logger())
 	router.Use(gin.Recovery())
-	api := router.Group("/api")
 
-	api.Use(MiddlewareWrapper(middlewares.AuthRequiredMiddleware))
-	router.Use(MiddlewareWrapper(middlewares.CorsMiddleware))
-
-	api.GET(defaultRoute, HandlerWrapper(handlerAPI))
 	router.Static("/f/", PublicFolder)
 	router.Static("/static/", UploadFolder)
-	router.GET("/", HandlerWrapper(handlerHome))
 
-	router.POST("/auth/local", MiddlewareWrapper(middlewares.BodyLoginUser), HandlerWrapper(handlerLoginUser))
+	return &apistruct{router: router, middlewares: make([]gin.HandlerFunc, 0)}
+}
 
-	return &apistruct{router: router}
+func (api *apistruct) Use(middlewares ...gin.HandlerFunc) API {
+	api.middlewares = middlewares
+	return api
+}
+
+func (api *apistruct) Serve(w http.ResponseWriter, req *http.Request) {
+	middlewares := api.middlewares
+	api.middlewares = make([]gin.HandlerFunc, 0)
+	api.router.Use(middlewares...)
+	api.router.ServeHTTP(w, req)
 }
 
 func (api *apistruct) Listen(port string) error {
@@ -57,20 +62,29 @@ func (api *apistruct) Listen(port string) error {
 	return server.ListenAndServe()
 }
 
-func (api *apistruct) GET(path string, handler Handler) {
-	api.router.GET(path, HandlerWrapper(handler))
+func (api *apistruct) GET(path string, handler ...gin.HandlerFunc) {
+	middlewares := api.middlewares
+	api.middlewares = make([]gin.HandlerFunc, 0)
+	logger.Info("c (%v) o (%v)", len(middlewares), len(api.middlewares))
+	api.router.GET(path, append(middlewares, handler...)...)
 }
 
-func (api *apistruct) POST(path string, handler Handler) {
-	api.router.POST(path, HandlerWrapper(handler))
+func (api *apistruct) POST(path string, handler ...gin.HandlerFunc) {
+	middlewares := api.middlewares
+	api.middlewares = make([]gin.HandlerFunc, 0)
+	api.router.POST(path, append(middlewares, handler...)...)
 }
 
-func (api *apistruct) PUT(path string, handler Handler) {
-	api.router.PUT(path, HandlerWrapper(handler))
+func (api *apistruct) PUT(path string, handler ...gin.HandlerFunc) {
+	middlewares := api.middlewares
+	api.middlewares = make([]gin.HandlerFunc, 0)
+	api.router.PUT(path, append(middlewares, handler...)...)
 }
 
-func (api *apistruct) DELETE(path string, handler Handler) {
-	api.router.DELETE(path, HandlerWrapper(handler))
+func (api *apistruct) DELETE(path string, handler ...gin.HandlerFunc) {
+	middlewares := api.middlewares
+	api.middlewares = make([]gin.HandlerFunc, 0)
+	api.router.DELETE(path, append(middlewares, handler...)...)
 }
 
 func createServer(router *gin.Engine, port string) *http.Server {
@@ -87,44 +101,9 @@ func createServer(router *gin.Engine, port string) *http.Server {
 	return server
 }
 
-// MiddlewareWrapper __
-func MiddlewareWrapper(handler func(http.ResponseWriter, *http.Request) error) func(ctx *gin.Context) {
+// WrapperGinHandler pass a parameter a http handler that combine with gin-gonic handler
+func WrapperGinHandler(handler http.Handler) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		if err := handler(ctx.Writer, ctx.Request); err != nil {
-			ctx.String(http.StatusUnauthorized, "Unauthorized")
-			ctx.AbortWithStatus(http.StatusUnauthorized)
-		} else {
-			ctx.Next()
-		}
+		handler.ServeHTTP(ctx.Writer, ctx.Request)
 	}
-}
-
-// HandlerWrapper __
-func HandlerWrapper(handler Handler) func(ctx *gin.Context) {
-	return func(ctx *gin.Context) {
-		handler(ctx.Writer, ctx.Request)
-	}
-}
-
-// handlerHome rest handler home
-func handlerHome(w http.ResponseWriter, r *http.Request) {
-	// r.HeadersRegexp("Content-Type", "application/(text|json)")
-	time.Sleep(100 * time.Microsecond)
-	ResponseString(w, "Powered with Golang")
-}
-
-// HandlerAPI handle api
-func handlerAPI(w http.ResponseWriter, r *http.Request) {
-	ResponseString(w, "API - Powered with Golang")
-}
-
-// HandlerLoginUser user login post request
-func handlerLoginUser(w http.ResponseWriter, r *http.Request) {
-	ResponseString(w, "Powered with Golang")
-}
-
-// ResponseString response a string with status 200
-func ResponseString(w http.ResponseWriter, text string) {
-	w.WriteHeader(http.StatusOK)
-	io.WriteString(w, text)
 }

@@ -10,7 +10,9 @@ import (
 	"os"
 	"testing"
 
+	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
+	"github.com/yellyoshua/elections-app/api"
 	"github.com/yellyoshua/elections-app/models"
 	"github.com/yellyoshua/elections-app/modules/authentication"
 	"github.com/yellyoshua/elections-app/repository"
@@ -20,8 +22,15 @@ var secretTest string = "secret_string"
 
 var auth authentication.Auth = authentication.NewAuthentication(secretTest)
 
+func responseOK(ctx *gin.Context) {
+	ctx.String(http.StatusOK, "OK")
+}
+
 func TestBodyLoginUser(t *testing.T) {
 	wrongBodyForm := func() {
+		router := api.New()
+		router.Use(BodyLoginUser).POST("/login", responseOK)
+
 		w := httptest.NewRecorder()
 		body := map[string]interface{}{
 			"password":   "",
@@ -31,11 +40,16 @@ func TestBodyLoginUser(t *testing.T) {
 		form, _ := json.Marshal(body)
 		req, _ := http.NewRequest(http.MethodPost, "/login", bytes.NewBuffer(form))
 
-		err := BodyLoginUser(w, req)
-		assert.NotEqual(t, nil, err)
+		router.Serve(w, req)
+
+		assert.Equal(t, http.StatusUnauthorized, w.Code)
+		assert.Equal(t, "", w.Body.String())
 	}
 
 	correctBodyForm := func() {
+		router := api.New()
+		router.Use(BodyLoginUser).POST("/login", responseOK)
+
 		w := httptest.NewRecorder()
 		body := map[string]interface{}{
 			"password":   "somepassword",
@@ -45,9 +59,10 @@ func TestBodyLoginUser(t *testing.T) {
 		form, _ := json.Marshal(body)
 		req, _ := http.NewRequest(http.MethodPost, "/login", bytes.NewBuffer(form))
 
-		err := BodyLoginUser(w, req)
+		router.Serve(w, req)
 
-		assert.Equal(t, nil, err)
+		assert.Equal(t, http.StatusOK, w.Code)
+		assert.Equal(t, "OK", w.Body.String())
 	}
 
 	wrongBodyForm()
@@ -55,13 +70,13 @@ func TestBodyLoginUser(t *testing.T) {
 }
 
 func TestCorsMiddleware(t *testing.T) {
+	router := api.New()
+	router.Use(CorsMiddleware).GET("/cors", responseOK)
+
 	w := httptest.NewRecorder()
 
 	req, _ := http.NewRequest(http.MethodGet, "/cors", nil)
-
-	if err := CorsMiddleware(w, req); err != nil {
-		t.Errorf("Error with cors middleware -> %s", err)
-	}
+	router.Serve(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Equal(t, "*", w.Header().Get("Access-Control-Allow-Origin"))
@@ -112,13 +127,17 @@ func TestMiddlewareAuth(t *testing.T) {
 	}
 
 	unauthorized := func() {
+		router := api.New()
+		router.Use(AuthRequiredMiddleware).GET("/api", responseOK)
+
 		token := "Bearer asdasd"
 		w := httptest.NewRecorder()
 
 		req, _ := http.NewRequest(http.MethodGet, "/api", nil)
 		req.Header.Add("Authorization", token)
 
-		AuthRequiredMiddleware(w, req)
+		router.Serve(w, req)
+		// AuthRequiredMiddleware(w, req)
 
 		assert.Equal(t, http.StatusUnauthorized, w.Code)
 		assert.Equal(t, "Unauthorized", w.Body.String())
@@ -126,6 +145,9 @@ func TestMiddlewareAuth(t *testing.T) {
 
 	authorized := func() {
 		for _, session := range sessions {
+			router := api.New()
+			router.Use(AuthRequiredMiddleware).GET("/api", responseOK)
+
 			var (
 				token = fmt.Sprintf("Bearer %v", session.Token)
 			)
@@ -136,11 +158,12 @@ func TestMiddlewareAuth(t *testing.T) {
 
 			req, _ := http.NewRequest(http.MethodGet, "/api", nil)
 			req.Header.Add("Authorization", token)
+			router.Serve(w, req)
 
-			AuthRequiredMiddleware(w, req)
+			// AuthRequiredMiddleware(w, req)
 
 			assert.Equal(t, http.StatusOK, w.Code)
-			assert.Equal(t, "Powered with Golang", w.Body.String())
+			assert.Equal(t, "OK", w.Body.String())
 		}
 	}
 
@@ -148,6 +171,9 @@ func TestMiddlewareAuth(t *testing.T) {
 		col.Drop() // Drop collection of sessions registered
 
 		for _, session := range sessions {
+			router := api.New()
+			router.Use(AuthRequiredMiddleware).GET("/api", responseOK)
+
 			var (
 				token = fmt.Sprintf("Bearer %v", session.Token)
 			)
@@ -156,8 +182,9 @@ func TestMiddlewareAuth(t *testing.T) {
 
 			req, _ := http.NewRequest(http.MethodGet, "/api", nil)
 			req.Header.Add("Authorization", token)
+			router.Serve(w, req)
 
-			AuthRequiredMiddleware(w, req)
+			// AuthRequiredMiddleware(w, req)
 
 			assert.Equal(t, http.StatusUnauthorized, w.Code)
 			assert.Equal(t, "Session Expired", w.Body.String())
