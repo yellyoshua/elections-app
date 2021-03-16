@@ -17,10 +17,8 @@ import (
 
 // TODO: Create graphql mutator for delete user by username and query find
 
-var graphqlService GRAPHQL
-
-// GRAPHQL Queries and Mutators
-type GRAPHQL interface {
+// resolver Queries and Mutators
+type resolver interface {
 	// Queries
 	GetUsers(params gql.ResolveParams) (interface{}, error)
 	FindUserByID(params gql.ResolveParams) (interface{}, error)
@@ -30,46 +28,45 @@ type GRAPHQL interface {
 	UpdateUser(params gql.ResolveParams) (interface{}, error)
 }
 
-// Initialize func to init graphql module
-func Initialize() GRAPHQL {
-	graphqlService = NewGraphqlService()
-	return graphqlService
-}
-
 // Service _
-type Service struct{}
-
-// NewGraphqlService intance service
-func NewGraphqlService() *Service {
-	service := new(Service)
-	return service
+type Service interface {
+	Handler() http.Handler
 }
 
-// Handler http handler
-func Handler() http.Handler {
+type serviceStruct struct {
+	schema gql.Schema
+}
 
-	if graphqlService == nil {
-		logger.Fatal("Not initialized graphql module")
-	}
+type resolverStruct struct {
+	repo repository.Repository
+}
 
-	schema, err := setupSchemas(graphqlService)
-
-	// TODO: Test this exeption!
+// Initialize func to init graphql module
+func Initialize() {
+	repo := repository.New()
+	_, err := graphqlSchemas(repo)
 	if err != nil {
-		logger.Fatal("Error creating graphql schema config, error: %v", err)
+		logger.Fatal("Error trying setup graphql schemas -> %s", err)
 	}
-
-	graphqlHandler := gqlhandler.New(&gqlhandler.Config{
-		Schema:     &schema,
-		Pretty:     true,
-		Playground: true,
-		GraphiQL:   true,
-	})
-
-	return graphqlHandler
 }
 
-func setupSchemas(graphqlService GRAPHQL) (gql.Schema, error) {
+// New _
+func New() Service {
+	repo := repository.New()
+	return NewWitRepository(repo)
+}
+
+// NewWitRepository _
+func NewWitRepository(repo repository.Repository) Service {
+	schema, _ := graphqlSchemas(repo)
+	return &serviceStruct{schema: schema}
+}
+
+func graphqlSchemas(repo repository.Repository) (gql.Schema, error) {
+	graphqlService := &resolverStruct{
+		repo: repo,
+	}
+
 	var mutators = graphql.NewObject(graphql.ObjectConfig{
 		Name: "RootMutation",
 		Fields: graphql.Fields{
@@ -112,12 +109,26 @@ func setupSchemas(graphqlService GRAPHQL) (gql.Schema, error) {
 		Query:    queries,
 		Mutation: mutators,
 	})
+
 	return schema, err
 }
 
-// GetUsers __
-func (s *Service) GetUsers(params gql.ResolveParams) (interface{}, error) {
-	col := repository.NewRepository(repository.CollectionUsers)
+// Handler http handler
+func (gql *serviceStruct) Handler() http.Handler {
+
+	graphqlHandler := gqlhandler.New(&gqlhandler.Config{
+		Schema:     &gql.schema,
+		Pretty:     true,
+		Playground: true,
+		GraphiQL:   true,
+	})
+
+	return graphqlHandler
+}
+
+func (r *resolverStruct) GetUsers(params gql.ResolveParams) (interface{}, error) {
+	col := r.repo.Col(repository.CollectionUsers)
+
 	filter := bson.D{}
 	var users []models.User
 	err := col.Find(filter, &users)
@@ -128,12 +139,11 @@ func (s *Service) GetUsers(params gql.ResolveParams) (interface{}, error) {
 	return users, nil
 }
 
-// FindUserByID __
-func (s *Service) FindUserByID(params gql.ResolveParams) (interface{}, error) {
+func (r *resolverStruct) FindUserByID(params gql.ResolveParams) (interface{}, error) {
 	var err error
 	var userID primitive.ObjectID
 
-	col := repository.NewRepository(repository.CollectionUsers)
+	col := r.repo.Col(repository.CollectionUsers)
 	userIDString, _ := params.Args["id"].(string)
 
 	userID, err = primitive.ObjectIDFromHex(userIDString)
@@ -150,10 +160,9 @@ func (s *Service) FindUserByID(params gql.ResolveParams) (interface{}, error) {
 	return user, nil
 }
 
-// FindUserByUsername __
-func (s *Service) FindUserByUsername(params gql.ResolveParams) (interface{}, error) {
+func (r *resolverStruct) FindUserByUsername(params gql.ResolveParams) (interface{}, error) {
 
-	col := repository.NewRepository(repository.CollectionUsers)
+	col := r.repo.Col(repository.CollectionUsers)
 	username, _ := params.Args["username"].(string)
 
 	var user models.User
@@ -165,9 +174,8 @@ func (s *Service) FindUserByUsername(params gql.ResolveParams) (interface{}, err
 	return user, nil
 }
 
-// CreateUser __
-func (s *Service) CreateUser(params gql.ResolveParams) (interface{}, error) {
-	col := repository.NewRepository(repository.CollectionUsers)
+func (r *resolverStruct) CreateUser(params gql.ResolveParams) (interface{}, error) {
+	col := r.repo.Col(repository.CollectionUsers)
 	name, _ := params.Args["name"].(string)
 	surname, _ := params.Args["surname"].(string)
 	username, _ := params.Args["username"].(string)
@@ -195,12 +203,11 @@ func (s *Service) CreateUser(params gql.ResolveParams) (interface{}, error) {
 	return user, err
 }
 
-// UpdateUser {params models.UpdateUserGQL}
-func (s *Service) UpdateUser(params gql.ResolveParams) (interface{}, error) {
+func (r *resolverStruct) UpdateUser(params gql.ResolveParams) (interface{}, error) {
 	var err error
 	var userID primitive.ObjectID
 
-	col := repository.NewRepository(repository.CollectionUsers)
+	col := r.repo.Col(repository.CollectionUsers)
 	userIDString, _ := params.Args["userID"].(string)
 	delete(params.Args, "userID")
 
@@ -217,10 +224,4 @@ func (s *Service) UpdateUser(params gql.ResolveParams) (interface{}, error) {
 
 	params.Args["_id"] = userID
 	return params.Args, nil
-}
-
-func checkError(err error) {
-	if err != nil {
-		logger.Fatal("Repository error: %v", err)
-	}
 }

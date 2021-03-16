@@ -102,7 +102,7 @@ func TestStorageMethods(t *testing.T) {
 		t.Errorf("Error creating GCSBUCKET %v", err)
 	}
 
-	clientStorage := &MockClientStorage{}
+	clientStorage := &MockStorage{}
 
 	client := NewWithClient(clientStorage)
 
@@ -156,15 +156,14 @@ func handlerUploadOne(client *Storage) func(*gin.Context) {
 
 		defer f.Close()
 
-		fullPath := fmt.Sprintf("uploads/%s", fileheader.Filename)
-		uploaded, err := client.UploadOne(context.TODO(), fullPath, f)
-		if err != nil {
+		path := filepath.Join("uploads", fileheader.Filename)
+		if err := client.UploadOne(context.TODO(), path, f); err != nil {
 			err = fmt.Errorf("Error uploading file -> %s", err)
 			ctx.String(http.StatusOK, err.Error())
 			return
 		}
 
-		ctx.String(http.StatusOK, uploaded.url)
+		ctx.String(http.StatusOK, path)
 		return
 	}
 }

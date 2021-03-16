@@ -23,8 +23,8 @@ type JWT struct {
 	Exp    int64
 }
 
-// NewAuthentication instance a new interface of Authentication module
-func NewAuthentication(secret string) Auth {
+// New this instance a interface with methods that Create, Verify and get Secret
+func New(secret string) Auth {
 	expireToken := time.Now().Add(time.Minute * 5).Unix()
 
 	jwt := new(JWT)
@@ -43,7 +43,7 @@ func (j *JWT) VerifyToken(tokenString string) (string, error) {
 	var tokenValue string
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
+			return nil, fmt.Errorf("Signing with HMAC method not allowed")
 		}
 		return []byte(j.Secret), nil
 	})
@@ -62,7 +62,7 @@ func (j *JWT) VerifyToken(tokenString string) (string, error) {
 
 // CreateToken method create a token string encoded with secret key
 func (j *JWT) CreateToken(tokenValue string) (string, error) {
-	secret := j.Secret
+	secret := []byte(j.Secret)
 	claims := &jwt.StandardClaims{
 		Issuer:    "auth-app",
 		Subject:   tokenValue,
@@ -71,6 +71,6 @@ func (j *JWT) CreateToken(tokenValue string) (string, error) {
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	jwtToken, err := token.SignedString([]byte(secret))
+	jwtToken, err := token.SignedString(secret)
 	return jwtToken, err
 }

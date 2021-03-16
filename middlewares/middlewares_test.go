@@ -20,7 +20,7 @@ import (
 
 var secretTest string = "secret_string"
 
-var auth authentication.Auth = authentication.NewAuthentication(secretTest)
+var auth authentication.Auth = authentication.New(secretTest)
 
 func responseOK(ctx *gin.Context) {
 	ctx.String(http.StatusOK, "OK")
@@ -105,9 +105,10 @@ func TestBearerExtractToken(t *testing.T) {
 
 func TestMiddlewareAuth(t *testing.T) {
 	setupTests()
-	auth := authentication.NewAuthentication(secretTest)
-	col := repository.NewRepository(repository.CollectionSessions)
-	col.Database().Drop(context.TODO())
+	auth := authentication.New(secretTest)
+	repo := repository.New()
+	col := repo.Col(repository.CollectionSessions)
+	repo.DatabaseDrop(context.TODO())
 
 	var sessions []models.Session = []models.Session{
 		{Token: ""},

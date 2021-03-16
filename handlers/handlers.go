@@ -17,7 +17,7 @@ func HandlerHome(ctx *gin.Context) {
 
 // HandlerGraphql handler http request of graphql
 func HandlerGraphql(ctx *gin.Context) {
-	graphqlModule := graphql.Handler()
+	graphqlModule := graphql.New().Handler()
 	graphqlModule.ServeHTTP(ctx.Writer, ctx.Request)
 }
 

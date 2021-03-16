@@ -85,3 +85,19 @@ func BearerExtractToken(bearer string) string {
 
 	return token
 }
+
+
+// ReflectValueTo 
+// Reference Yoshua Lopez (Gits) [https://gist.github.com/yellyoshua/8dd392cde25fc300c866449f83561ff8]
+func ReflectValueTo(val interface{}, dest interface{}) {
+	isPointer := func(dest interface{}) bool {
+		return reflect.TypeOf(dest).Kind() == reflect.Ptr
+	}
+
+	if isPointer(dest) {
+		rGopher := reflect.ValueOf(dest)
+
+		rG2Val := reflect.ValueOf(val)
+		rGopher.Elem().Set(rG2Val)
+	}
+}

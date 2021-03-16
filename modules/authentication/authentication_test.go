@@ -10,7 +10,7 @@ func TestEncriptionToken(t *testing.T) {
 	var tokenValue string = "someOne"
 	var secret string = "secret"
 
-	auth := NewAuthentication(secret)
+	auth := New(secret)
 	token, err := auth.CreateToken(tokenValue)
 
 	if err != nil {
@@ -39,7 +39,7 @@ func TestEncriptionToken(t *testing.T) {
 func TestEncriptionFailureToken(t *testing.T) {
 	var secret string = "secret"
 
-	auth := NewAuthentication(secret)
+	auth := New(secret)
 	fakeToken := "adadasdasdas"
 
 	_, errToken := auth.VerifyToken(fakeToken)
@@ -58,7 +58,7 @@ func TestEncriptionFailureToken(t *testing.T) {
 func TestEncriptionFailSecretToken(t *testing.T) {
 	var secret string = "secretito"
 
-	auth := NewAuthentication(secret)
+	auth := New(secret)
 	fakeToken := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhdWQiOiJhbnkiLCJleHAiOjE2MDk5OTM2MzQsImlzcyI6ImF1dGgtYXBwIiwic3ViIjoic29tZU9uZSJ9.hjv7AzIZSCL_yv9emr5iFu7WJvdo-Qrjjd7Mwv1zCiM"
 
 	_, errToken := auth.VerifyToken(fakeToken)

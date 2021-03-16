@@ -1,14 +1,26 @@
 #!bin/bash
-go get github.com/gin-gonic/gin
-go get github.com/joho/godotenv
-go get go.mongodb.org/mongo-driver
-go get gopkg.in/validator.v2
 
 
 #
 # Makefile
 # hzsunshx, 2015-02-11 13:17
 #
+
+install:
+	go get .
+	go get github.com/vektra/mockery/v2/.../
+
+test:
+	# go get github.com/vektra/mockery/v2/.../
+	mockery --dir repository --all --output ./mocks/repository/ --keeptree --inpackage
+	go test -timeout 30s github.com/yellyoshua/elections-app/modules/graphql
+	go test -timeout 30s github.com/yellyoshua/elections-app/repository
+	go test -timeout 30s github.com/yellyoshua/elections-app/utils
+	go test -timeout 30s github.com/yellyoshua/elections-app/middlewares
+	go test -timeout 30s github.com/yellyoshua/elections-app/handlers
+
+build:
+	go build .
 
 dev: clean
 	npm start

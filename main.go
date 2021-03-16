@@ -9,7 +9,6 @@ import (
 	"github.com/yellyoshua/elections-app/logger"
 	"github.com/yellyoshua/elections-app/middlewares"
 	"github.com/yellyoshua/elections-app/modules"
-	"github.com/yellyoshua/elections-app/modules/graphql"
 	"github.com/yellyoshua/elections-app/repository"
 )
 
@@ -37,12 +36,10 @@ func setupServer() {
 	port := os.Getenv("PORT")
 	router := api.New()
 
-	graphqlModule := graphql.Handler()
-
-	router.POST("/graphql", api.WrapperGinHandler(graphqlModule))
-	router.GET("/graphql", api.WrapperGinHandler(graphqlModule))
-	router.PUT("/graphql", api.WrapperGinHandler(graphqlModule))
-	router.DELETE("/graphql", api.WrapperGinHandler(graphqlModule))
+	router.POST("/graphql", handlers.HandlerGraphql)
+	router.GET("/graphql", handlers.HandlerGraphql)
+	router.PUT("/graphql", handlers.HandlerGraphql)
+	router.DELETE("/graphql", handlers.HandlerGraphql)
 	router.Use(middlewares.AuthRequiredMiddleware).GET("/api", handlers.HandlerAPI)
 	router.Use(middlewares.BodyLoginUser).POST("/auth/local", handlers.HandlerLoginUser)
 	router.GET("/", handlers.HandlerHome)

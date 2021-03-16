@@ -10,6 +10,7 @@ import (
 	"github.com/yellyoshua/elections-app/models"
 	"github.com/yellyoshua/elections-app/modules/authentication"
 	"github.com/yellyoshua/elections-app/repository"
+	"github.com/yellyoshua/elections-app/utils"
 	"go.mongodb.org/mongo-driver/bson"
 	"gopkg.in/validator.v2"
 )
@@ -28,16 +29,33 @@ func bearerExtractToken(bearer string) string {
 	return token
 }
 
+var csrfSecret = ""
+
+var CSRFKey = "CSRF_TOKEN"
+
+// CSRF protect attacks of CSRF token
+func CSRF(ctx *gin.Context) {
+	uuid, _ := utils.GenerateUniqueID(nil)
+	jwt := authentication.New(csrfSecret)
+	token, _ := jwt.CreateToken(uuid)
+
+	ctx.Set(CSRFKey, token)
+
+	ctx.Next()
+}
+
 // AuthRequiredMiddleware _
 func AuthRequiredMiddleware(ctx *gin.Context) {
 	var session models.Session
 	authorization := ctx.GetHeader("Authorization")
 	token := bearerExtractToken(authorization)
 
-	col := repository.NewRepository(repository.CollectionSessions)
+	repo := repository.New()
+
+	col := repo.Col(repository.CollectionSessions)
 	col.FindOne(bson.M{"token": token}, &session)
 
-	auth := authentication.NewAuthentication(secret)
+	auth := authentication.New(secret)
 	_, errToken := auth.VerifyToken(token)
 
 	if errToken != nil || session.Token != token {

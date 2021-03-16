@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"mime/multipart"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	gcs "cloud.google.com/go/storage"
@@ -26,16 +26,14 @@ var credentialsFile string
 
 // Client interface with method allowed here!
 type Client interface {
-	UploadOne(ctx context.Context, path string, file multipart.File) (UploadedFile, error)
-	UploadMany(ctx context.Context, path string, files []multipart.File) (UploadedFile, error)
+	UploadOne(ctx context.Context, path string, file io.Reader) error
+	UploadMany(ctx context.Context, files FilesUpload) error
 	RemoveOne(ctx context.Context, path string) error
 	Bucket() *gcs.BucketHandle
 }
 
-// UploadedFile _
-type UploadedFile struct {
-	url string
-}
+// FilesUpload map with filePath and Reader
+type FilesUpload map[string]io.Reader
 
 // Storage _
 type Storage struct {
@@ -111,42 +109,61 @@ func NewWithClient(client *gcs.Client) *Storage {
 }
 
 // UploadOne _
-func (upld *Storage) UploadOne(ctx context.Context, path string, file multipart.File) (UploadedFile, error) {
-	bucket := upld.client.Bucket(upld.bucket)
+func (upld *Storage) UploadOne(ctx context.Context, path string, file io.Reader) error {
+	bucket := upld.Bucket()
 
 	// w implements io.Writer.
 	w := bucket.Object(path).NewWriter(ctx)
 
 	// Copy file into GCS
 	if _, err := io.Copy(w, file); err != nil {
-		return UploadedFile{}, fmt.Errorf("Failed to copy to bucket: %v", err)
+		return fmt.Errorf("Failed to copy to bucket: %v", err)
 	}
 
 	// Close, just like writing a file. File appears in GCS after
 	if err := w.Close(); err != nil {
-		return UploadedFile{}, fmt.Errorf("Failed to close: %v", err)
+		return fmt.Errorf("Failed to close: %v", err)
 	}
 
-	return UploadedFile{
-		url: path,
-	}, nil
+	return nil
 }
 
 // UploadMany _
-func (upld *Storage) UploadMany(ctx context.Context, path string, files []multipart.File) (UploadedFile, error) {
-	return UploadedFile{}, nil
+func (upld *Storage) UploadMany(ctx context.Context, files FilesUpload) error {
+	var chans chan error = make(chan error)
+	var wg sync.WaitGroup
+	var err error
+
+	for path, obj := range files {
+		wg.Add(1)
+		go uploadRoutine(ctx, path, obj, chans, upld, &wg)
+	}
+
+	go func() {
+		for c := range chans {
+			if c != nil {
+				err = c
+				return
+			}
+		}
+	}()
+
+	wg.Wait()
+	close(chans)
+
+	return err
 }
 
 // RemoveOne _
 func (upld *Storage) RemoveOne(ctx context.Context, path string) error {
-	bucket := upld.client.Bucket(upld.bucket)
+	bucket := upld.Bucket()
 	err := bucket.Object(path).Delete(ctx)
 	return err
 }
 
 // Bucket _
 func (upld *Storage) Bucket() *gcs.BucketHandle {
-	bucket := upld.client.Bucket(upld.bucket)
+	bucket := upld.Bucket()
 	return bucket
 }
 
@@ -174,4 +191,35 @@ func clientGoogleStorage() *gcs.Client {
 	}
 
 	return clientStorage
+}
+
+func uploadRoutine(ctx context.Context, path string, f io.Reader, c chan error, st *Storage, wg *sync.WaitGroup) {
+	obj := st.Bucket().Object(path)
+	w := obj.NewWriter(context.TODO())
+
+	if _, err := io.Copy(w, f); err != nil {
+		c <- err
+		return
+	}
+
+	defer wg.Done()
+
+	if err := w.Close(); err != nil {
+		c <- err
+		return
+	}
+
+	// Make public the object to internet
+	if err := setObjectPublic(ctx, obj); err != nil {
+		c <- err
+		return
+	}
+
+	c <- nil
+	return
+}
+
+func setObjectPublic(ctx context.Context, obj *gcs.ObjectHandle) error {
+	err := obj.ACL().Set(ctx, gcs.AllUsers, gcs.RoleReader)
+	return err
 }

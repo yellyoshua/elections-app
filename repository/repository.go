@@ -11,10 +11,8 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-// Repository __
-type Repository interface {
-	Collection() *mongo.Collection
-	Database() *mongo.Database
+// Client __
+type Client interface {
 	UpdateOne(filter interface{}, update map[string]interface{}) error
 	FindOne(filter interface{}, dest interface{}) error
 	Find(filter interface{}, dest interface{}) error
@@ -24,18 +22,28 @@ type Repository interface {
 	Drop() error
 }
 
-// Repo _
-type Repo struct {
+type clientStruct struct {
+	col        *mongo.Collection
 	collection string
+	client     *mongo.Database
 }
 
-var db *mongo.Database
+// Repository __
+type Repository interface {
+	Col(collection string) Client
+	DatabaseDrop(ctx context.Context) error
+}
+type repositoryStruct struct {
+	collection string
+	client     *mongo.Database
+}
 
 // Initialize start database connection
 func Initialize(indexes bool) {
-	var setup Steps
+	setup, db := clientMongodb()
 
-	setup, db = connect()
+	s := &mongo.Collection{}
+	s.Database()
 
 	if indexes {
 		setup.SetupIndexes()
@@ -46,45 +54,49 @@ func Initialize(indexes bool) {
 	}
 }
 
-// NewRepository __
-func NewRepository(collection string) Repository {
-	if db == nil {
-		logger.Fatal("Need initialize repository connection to database")
+// New _
+func New() Repository {
+	_, client := clientMongodb()
+	return NewWithClient(client) // provide real implementation here as argument
+}
+
+// NewWithClient creates a new Storage client with a custom implementation
+// This is the function you use in your unit tests
+func NewWithClient(client *mongo.Database) Repository {
+	return &repositoryStruct{
+		client: client,
 	}
-
-	repo := new(Repo)
-	repo.collection = collection
-	return repo
 }
 
-// Database return the database connection
-func (r *Repo) Database() *mongo.Database {
-	return db
+func (r *repositoryStruct) Col(collection string) Client {
+	// r.client.Collection()
+	return &clientStruct{
+		client:     r.client,
+		col:        r.client.Collection(collection),
+		collection: collection,
+	}
 }
 
-// Collection return the database collection session
-func (r *Repo) Collection() *mongo.Collection {
-	return db.Collection(r.collection)
+func (r *repositoryStruct) DatabaseDrop(ctx context.Context) error {
+	return r.client.Drop(ctx)
 }
 
-// Drop _
-func (r *Repo) Drop() error {
+func (client *clientStruct) Drop() error {
 	ctx, cancel := context.WithTimeout(context.TODO(), 5*time.Second)
 	defer cancel()
 
-	err := db.Collection(r.collection).Drop(ctx)
+	err := client.col.Drop(ctx)
 	return err
 }
 
-// FindByID _
-func (r *Repo) FindByID(id primitive.ObjectID, dest interface{}) error {
+func (client *clientStruct) FindByID(id primitive.ObjectID, dest interface{}) error {
 	var err error
 
 	if err != nil {
 		return err
 	}
 
-	err = db.Collection(r.collection).FindOne(context.TODO(), bson.M{"_id": id}).Decode(dest)
+	err = client.col.FindOne(context.TODO(), bson.M{"_id": id}).Decode(dest)
 
 	if err != nil {
 		return err
@@ -93,9 +105,8 @@ func (r *Repo) FindByID(id primitive.ObjectID, dest interface{}) error {
 	return nil
 }
 
-// FindOne _
-func (r *Repo) FindOne(filter interface{}, dest interface{}) error {
-	err := db.Collection(r.collection).FindOne(context.TODO(), filter).Decode(dest)
+func (client *clientStruct) FindOne(filter interface{}, dest interface{}) error {
+	err := client.col.FindOne(context.TODO(), filter).Decode(dest)
 	if err != nil {
 		return err
 	}
@@ -103,13 +114,12 @@ func (r *Repo) FindOne(filter interface{}, dest interface{}) error {
 	return nil
 }
 
-// Find __
-func (r *Repo) Find(filter interface{}, dest interface{}) error {
+func (client *clientStruct) Find(filter interface{}, dest interface{}) error {
 	var cursor *mongo.Cursor
 	var err error
 
 	ctx := context.Background()
-	cursor, err = db.Collection(r.collection).Find(context.TODO(), filter)
+	cursor, err = client.col.Find(context.TODO(), filter)
 	defer cursor.Close(ctx)
 
 	if err != nil {
@@ -125,12 +135,11 @@ func (r *Repo) Find(filter interface{}, dest interface{}) error {
 	return nil
 }
 
-// InsertOne _
-func (r *Repo) InsertOne(data interface{}) (primitive.ObjectID, error) {
+func (client *clientStruct) InsertOne(data interface{}) (primitive.ObjectID, error) {
 	ctx, cancel := context.WithTimeout(context.TODO(), 5*time.Second)
 	defer cancel()
 
-	result, err := db.Collection(r.collection).InsertOne(ctx, data)
+	result, err := client.col.InsertOne(ctx, data)
 
 	if err != nil {
 		return primitive.ObjectID{}, err
@@ -140,18 +149,16 @@ func (r *Repo) InsertOne(data interface{}) (primitive.ObjectID, error) {
 	return id, err
 }
 
-// InsertMany _
-func (r *Repo) InsertMany(data []interface{}) error {
+func (client *clientStruct) InsertMany(data []interface{}) error {
 	ctx, cancel := context.WithTimeout(context.TODO(), 10*time.Second)
 	defer cancel()
 
-	_, err := db.Collection(r.collection).InsertMany(ctx, data)
+	_, err := client.col.InsertMany(ctx, data)
 	return err
 }
 
-// UpdateOne _
-func (r *Repo) UpdateOne(filter interface{}, update map[string]interface{}) error {
-	updater, err := db.Collection(r.collection).UpdateOne(context.TODO(), filter, bson.M{"$set": primitive.M(update)})
+func (client *clientStruct) UpdateOne(filter interface{}, update map[string]interface{}) error {
+	updater, err := client.col.UpdateOne(context.TODO(), filter, bson.M{"$set": primitive.M(update)})
 
 	if err != nil {
 		return err
@@ -161,6 +168,10 @@ func (r *Repo) UpdateOne(filter interface{}, update map[string]interface{}) erro
 		return fmt.Errorf("No matched documents")
 	}
 	return err
+}
+
+func clientMongodb() (Steps, *mongo.Database) {
+	return connect()
 }
 
 // Contraseña pc 1457

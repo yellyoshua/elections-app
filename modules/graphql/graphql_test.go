@@ -8,12 +8,16 @@ import (
 	"time"
 
 	"github.com/graphql-go/graphql"
+	"github.com/stretchr/testify/mock"
+	mockRepo "github.com/yellyoshua/elections-app/mocks/repository"
+	"github.com/yellyoshua/elections-app/models"
 	"github.com/yellyoshua/elections-app/repository"
+	"github.com/yellyoshua/elections-app/utils"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/net/context"
 )
 
 // TODO: Test graphql all queries
-
 type T struct {
 	Query     string
 	Schema    graphql.Schema
@@ -31,7 +35,7 @@ var QueryCreateUser string = `
 
 var QueryFindByUsername string = `
 	query RootQuery($username: String!) {
-		findUserByUsername(username: $username) { username }
+		findUserByUsername(username: $username) { username, name }
 	}
 `
 
@@ -53,50 +57,64 @@ func dropDBAndRepositoryStart(t *testing.T) {
 	defer cancel()
 
 	repository.Initialize(indexes)
-	col := repository.NewRepository(repository.CollectionUsers)
+	repo := repository.New()
 
-	if err := col.Database().Drop(ctx); err != nil {
+	if err := repo.DatabaseDrop(ctx); err != nil {
 		t.Fatalf("Error dropping database: %v", err)
 	}
 }
 
 func TestGraphqlModule(t *testing.T) {
-	dropDBAndRepositoryStart(t)
-
-	var expectedGQL string = "*graphql.Service"
-	gql := Initialize()
-
-	if reflect.TypeOf(gql).String() != expectedGQL {
-		t.Error("Should be a pointer of Service interface")
+	sampleUser := models.User{
+		Name:     "TestName",
+		Surname:  "TestSurname",
+		Username: "testuser",
+		Email:    "demo@demo.test",
+		Password: "demodotcom",
 	}
+	repoMock := new(mockRepo.Repository)
+	repoClientMock := new(mockRepo.Client)
 
-	var expectedHandler string = "*handler.Handler"
-	handler := Handler()
+	repoMock.On("Col", repository.CollectionUsers).Return(func(repo string) repository.Client {
+		return repoClientMock
+	})
 
-	if reflect.TypeOf(handler).String() != expectedHandler {
-		t.Error("Should be a http handler")
-	}
+	repoClientMock.On("InsertOne", mock.Anything).Return(func(user interface{}) primitive.ObjectID {
+		return primitive.NewObjectID()
+	}, func(user interface{}) error {
+		return nil
+	})
 
-	schema, err := setupSchemas(gql)
+	repoClientMock.On("FindOne", mock.AnythingOfType("primitive.M"), mock.Anything).Return(func(filter interface{}, dest interface{}) error {
+		f := filter.(primitive.M)
+		if f["username"] == sampleUser.Username {
+			utils.ReflectValueTo(sampleUser, dest)
+			return nil
+		}
+
+		return nil
+	})
+
+	schema, err := graphqlSchemas(repoMock)
 	if err != nil {
 		t.Fatalf("Error dropping collection: %v", err)
 	}
 
-	var Tests []T = []T{
+	var graphqlQueries []T = []T{
 		{
 			Query:  QueryCreateUser,
 			Schema: schema,
 			Expected: &graphql.Result{
 				Data: map[string]interface{}{
-					"createUser": map[string]interface{}{"username": "testuser"},
+					"createUser": map[string]interface{}{"username": sampleUser.Username},
 				},
 			},
 			Variables: map[string]interface{}{
-				"name":     "TestName",
-				"surname":  "TestSurname",
-				"username": "testuser",
-				"email":    "demo@demo.test",
-				"password": "demodotcom",
+				"name":     sampleUser.Name,
+				"surname":  sampleUser.Surname,
+				"username": sampleUser.Username,
+				"email":    sampleUser.Email,
+				"password": sampleUser.Password,
 			},
 		},
 		{
@@ -104,30 +122,52 @@ func TestGraphqlModule(t *testing.T) {
 			Schema: schema,
 			Expected: &graphql.Result{
 				Data: map[string]interface{}{
-					"findUserByUsername": map[string]interface{}{"username": "testuser"},
+					"findUserByUsername": map[string]interface{}{
+						"username": sampleUser.Username,
+						"name":     sampleUser.Name,
+					},
 				},
 			},
 			Variables: map[string]interface{}{
-				"username": "testuser",
+				"username": sampleUser.Username,
+			},
+		},
+		{
+			Query:  QueryFindByUsername,
+			Schema: schema,
+			Expected: &graphql.Result{
+				Data: map[string]interface{}{
+					"findUserByUsername": map[string]interface{}{
+						"username": "",
+						"name":     "",
+					},
+				},
+			},
+			Variables: map[string]interface{}{
+				"username": "not-found-username",
 			},
 		},
 	}
 
-	for _, test := range Tests {
+	for _, query := range graphqlQueries {
 		params := graphql.Params{
-			Schema:         test.Schema,
-			RequestString:  test.Query,
-			VariableValues: test.Variables,
+			Schema:         query.Schema,
+			RequestString:  query.Query,
+			VariableValues: query.Variables,
 		}
 
 		result := graphql.Do(params)
 		if len(result.Errors) > 0 {
 			t.Fatalf("wrong result, unexpected errors: %v", result.Errors)
 		}
-		if !reflect.DeepEqual(result, test.Expected) {
-			t.Fatalf("wrong result, query: %v, graphql result diff: %v", test.Query, diff(test.Expected, result))
+
+		if !reflect.DeepEqual(result, query.Expected) {
+			t.Fatalf("wrong result, query: %v, graphql result diff: %v", query.Query, diff(query.Expected, result))
 		}
 	}
+
+	repoClientMock.AssertExpectations(t)
+	repoMock.AssertExpectations(t)
 }
 
 func diff(want, got interface{}) []string {
