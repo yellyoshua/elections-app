@@ -30,7 +30,7 @@ func TestRepository(t *testing.T) {
 	dbMock := &mongo.Database{}
 	colMock := &mongo.Collection{}
 
-	dbMock.On("Collection", "").Return(func(col string) *db.Collection {
+	dbMock.On("Collection", "").Return(func(col string) db.Collection {
 		return colMock
 	})
 
@@ -127,7 +127,7 @@ func TestRepository(t *testing.T) {
 	}
 }
 
-func loadSampleData(t *testing.T, clientStorage Client, samples []Demo) {
+func loadSampleData(t *testing.T, clientStorage Collection, samples []Demo) {
 	var samplesInterface []interface{}
 
 	for _, sample := range samples {

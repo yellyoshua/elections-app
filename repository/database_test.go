@@ -5,8 +5,8 @@ import (
 )
 
 func TestDatabaseSetup(t *testing.T) {
-	// os.Setenv("DATABASE_NAME", "golangtest")
-	// os.Setenv("DATABASE_URI", "mongodb://root:dbpwd@localhost:27017")
+	// os.Setenv("MONGODB_DATABASE", "golangtest")
+	// os.Setenv("MONGODB_URI", "mongodb://root:dbpwd@localhost:27017")
 	// var collection string = "demo_indexes"
 
 	// var chanErrs []chan error = []chan error{
@@ -20,11 +20,11 @@ func TestDatabaseSetup(t *testing.T) {
 	// col := db.Collection(collection)
 	// demoIndexes := []mongo.IndexModel{
 	// 	{
-	// 		Options: options.Index().SetName("usernameIndex").SetUnique(true).SetDefaultLanguage("en").SetBackground(true),
+	// 		Options: options.Index().SetName("usernameIndex").SetUnique(true).SetDefaultLanguage("en"),
 	// 		Keys:    bson.M{"username": 1},
 	// 	},
 	// 	{
-	// 		Options: options.Index().SetName("uuidIndex").SetUnique(true).SetDefaultLanguage("en").SetBackground(true),
+	// 		Options: options.Index().SetName("uuidIndex").SetUnique(true).SetDefaultLanguage("en"),
 	// 		Keys:    bson.M{"uuid": -1},
 	// 	},
 	// }

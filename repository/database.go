@@ -13,28 +13,24 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-// Steps _
-type Steps interface {
+// Connection _
+type Connection interface {
 	SetupIndexes()
 }
 
-type step struct {
+type connectionStruct struct {
 	db *mongo.Database
 }
 
 // Connect connection with database
-func connect() (Steps, *mongo.Database) {
-	var steps = new(step)
-	dbName := os.Getenv("DATABASE_NAME")
-	mongoURI := os.Getenv("DATABASE_URI")
+func connect() (Connection, *mongo.Database) {
+	var mongoURI string = os.Getenv("MONGODB_URI")
+	var databaseName string
 
-	cxtTimeout, ctxCancel := context.WithTimeout(context.TODO(), 10*time.Second)
+	cxtTimeout, ctxCancel := context.WithTimeout(context.TODO(), 5*time.Second)
 
-	// Set client options
-	clientOpts := options.Client()
-
-	// Set client URI
-	clientURI := clientOpts.ApplyURI(mongoURI)
+	// Set URI to client options
+	clientURI := options.Client().ApplyURI(mongoURI)
 
 	logger.Info("Connecting to database")
 	defer ctxCancel()
@@ -43,26 +39,29 @@ func connect() (Steps, *mongo.Database) {
 	client, err := mongo.Connect(cxtTimeout, clientURI)
 
 	if err != nil {
-		logger.Fatal("Error connection database error: %v", err)
-		steps.db = nil
-		return steps, nil
+		logger.Fatal("Error when trying connect to mongo database -> %v", err)
+		return &connectionStruct{db: nil}, nil
 	}
 
-	// Check the connection
+	// Checking the connection to database
 	if err = client.Ping(cxtTimeout, nil); err != nil {
 		logger.Fatal("Error ping database error: %v", err)
-		steps.db = nil
-		return steps, nil
+		return &connectionStruct{nil}, nil
 	}
 
-	db := client.Database(dbName)
+	if len(os.Getenv("MONGODB_DATABASE")) == 0 {
+		databaseName = constants.DefaultDatabase
+	} else {
+		databaseName = os.Getenv("MONGODB_DATABASE")
+	}
 
-	steps.db = db
-	return steps, db
+	db := client.Database(databaseName)
+
+	return &connectionStruct{db}, db
 }
 
 // SetupIndexes _
-func (s *step) SetupIndexes() {
+func (s *connectionStruct) SetupIndexes() {
 	ctx, ctxCancel := context.WithTimeout(context.TODO(), 10*time.Second)
 	db := s.db
 
@@ -73,7 +72,7 @@ func (s *step) SetupIndexes() {
 
 	usersIndexes := []mongo.IndexModel{
 		{
-			Options: options.Index().SetName("usernameIndex").SetUnique(true).SetDefaultLanguage("en").SetBackground(true),
+			Options: options.Index().SetName("usernameIndex").SetUnique(true).SetDefaultLanguage("en"),
 			Keys:    bson.M{"username": 1},
 		},
 	}
@@ -91,36 +90,6 @@ func (s *step) SetupIndexes() {
 	logger.Info("Database created/updated indexes!")
 }
 
-func dropAllIndexes(ctx context.Context, col *mongo.Collection) error {
-	var err error
-	var indexes []interface{}
-	var cursor *mongo.Cursor
-	cursor, err = col.Indexes().List(ctx)
-
-	if err != nil {
-		return fmt.Errorf("Listing Indexes %v", err)
-	}
-
-	for cursor.Next(ctx) {
-		var index interface{}
-
-		err := cursor.Decode(&index)
-		if err != nil {
-			return fmt.Errorf("Indexes cursor %v", err)
-		}
-		indexes = append(indexes, index)
-	}
-
-	if len(indexes) != 0 {
-		_, err = col.Indexes().DropAll(ctx)
-		if err != nil {
-			return fmt.Errorf("Dropping Indexes %v", err)
-		}
-	}
-
-	return err
-}
-
 func createIndexes(ctx context.Context, col *mongo.Collection, indexes []mongo.IndexModel, c chan error) {
 	if err := dropAllIndexes(ctx, col); err != nil {
 		c <- err
@@ -128,7 +97,7 @@ func createIndexes(ctx context.Context, col *mongo.Collection, indexes []mongo.I
 	}
 
 	if _, err := col.Indexes().CreateMany(ctx, indexes); err != nil {
-		c <- fmt.Errorf("Creating Indexes %v", err)
+		c <- fmt.Errorf("ERROR creating indexes -> %v", err)
 		return
 	}
 
@@ -140,4 +109,34 @@ func closeChannels(ctxCancel context.CancelFunc, chans []chan error) {
 		close(c)
 		ctxCancel()
 	}
+}
+
+func dropAllIndexes(ctx context.Context, col *mongo.Collection) error {
+	var err error
+	var indexes []interface{}
+	var cursor *mongo.Cursor
+	cursor, err = col.Indexes().List(ctx)
+
+	if err != nil {
+		return fmt.Errorf("ERROR listing indexes -> %v", err)
+	}
+
+	for cursor.Next(ctx) {
+		var index interface{}
+
+		err := cursor.Decode(&index)
+		if err != nil {
+			return fmt.Errorf("ERROR with indexes cursor -> %v", err)
+		}
+		indexes = append(indexes, index)
+	}
+
+	if len(indexes) != 0 {
+		_, err = col.Indexes().DropAll(ctx)
+		if err != nil {
+			return fmt.Errorf("ERROR dropping indexes -> %v", err)
+		}
+	}
+
+	return err
 }

@@ -14,14 +14,6 @@ import (
 	"github.com/yellyoshua/elections-app/repository"
 )
 
-func main() {
-	setupFolders()
-	setupEnvironments()
-	setupRepository()
-	setupModules()
-	setupServer()
-}
-
 // Repository established connection to database
 func setupRepository() {
 	var indexes bool = true
@@ -39,6 +31,7 @@ func setupServer() {
 	router := api.New()
 
 	graphqlSession := graphql.New(graphql.GraphqlConfig{Playground: true, GraphiQL: true, Pretty: true})
+	middlw := middlewares.New(middlewares.MiddlewareConf{})
 
 	graphqlHandler := graphqlSession.Handler()
 
@@ -46,8 +39,8 @@ func setupServer() {
 	router.GET("/graphql", api.WrapperGinHandler(graphqlHandler))
 	router.PUT("/graphql", api.WrapperGinHandler(graphqlHandler))
 	router.DELETE("/graphql", api.WrapperGinHandler(graphqlHandler))
-	router.Use(middlewares.AuthRequiredMiddleware).GET("/api", handlers.HandlerAPI)
-	router.Use(middlewares.BodyLoginUser).POST("/auth/local", handlers.HandlerLoginUser)
+	router.Use(middlw.AuthRequiredMiddleware).GET("/api", handlers.HandlerAPI)
+	router.Use(middlw.BodyLoginUser).POST("/auth/local", handlers.HandlerLoginUser)
 	router.GET("/", handlers.HandlerHome)
 	router.Listen(port)
 }
@@ -61,15 +54,15 @@ func setupEnvironments() {
 		"GOOGLE_CLOUD_PROJECT": true,
 		"GCS_BUCKET":           true,
 		"GCS_CREDENTIALS_FILE": true,
-		"DATABASE_URI":         true,
-		"DATABASE_NAME":        true,
+		"MONGODB_URI":          true,
+		"MONGODB_DATABASE":     false,
 	}
 
 	for name, isRequired := range envs {
 		value := os.Getenv(name)
 
 		if existEnv := len(value) == 0; existEnv && isRequired {
-			logger.Fatal("%v environment variable must be set.\n", name)
+			logger.Fatal("%v environment variable is required.\n", name)
 		}
 	}
 
@@ -94,4 +87,12 @@ func setupFolders() {
 func checkNoFolder(path string) bool {
 	_, err := os.Stat(path)
 	return os.IsNotExist(err)
+}
+
+func main() {
+	setupFolders()
+	setupEnvironments()
+	setupRepository()
+	setupModules()
+	setupServer()
 }

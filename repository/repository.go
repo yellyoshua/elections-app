@@ -11,8 +11,8 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-// Client __
-type Client interface {
+// Collection __
+type Collection interface {
 	UpdateOne(filter interface{}, update map[string]interface{}) error
 	FindOne(filter interface{}, dest interface{}) error
 	Find(filter interface{}, dest interface{}) error
@@ -30,12 +30,11 @@ type clientStruct struct {
 
 // Repository __
 type Repository interface {
-	Col(collection string) Client
+	Col(collection string) Collection
 	DatabaseDrop(ctx context.Context) error
 }
 type repositoryStruct struct {
-	collection string
-	client     *mongo.Database
+	client *mongo.Database
 }
 
 // Initialize start database connection
@@ -68,7 +67,7 @@ func NewWithClient(client *mongo.Database) Repository {
 	}
 }
 
-func (r *repositoryStruct) Col(collection string) Client {
+func (r *repositoryStruct) Col(collection string) Collection {
 	// r.client.Collection()
 	return &clientStruct{
 		client:     r.client,
@@ -165,12 +164,12 @@ func (client *clientStruct) UpdateOne(filter interface{}, update map[string]inte
 	}
 
 	if updater.MatchedCount == 0 {
-		return fmt.Errorf("No matched documents")
+		return fmt.Errorf("ERROR no matched documents")
 	}
 	return err
 }
 
-func clientMongodb() (Steps, *mongo.Database) {
+func clientMongodb() (Connection, *mongo.Database) {
 	return connect()
 }
 

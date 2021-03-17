@@ -2,21 +2,23 @@ package middlewares
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/yellyoshua/elections-app/api"
 	"github.com/yellyoshua/elections-app/constants"
+	"github.com/yellyoshua/elections-app/mocks/repository"
 	"github.com/yellyoshua/elections-app/models"
 	"github.com/yellyoshua/elections-app/modules/authentication"
-	"github.com/yellyoshua/elections-app/repository"
+	repo "github.com/yellyoshua/elections-app/repository"
+	"github.com/yellyoshua/elections-app/utils"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 var secretTest string = "secret_string"
@@ -27,8 +29,11 @@ func responseOK(ctx *gin.Context) {
 
 func TestBodyLoginUser(t *testing.T) {
 	wrongBodyForm := func() {
+		mockRepo := &repository.Repository{}
+		apiMiddleware := NewWithRepository(mockRepo, MiddlewareConf{})
+
 		router := api.New()
-		router.Use(BodyLoginUser).POST("/login", responseOK)
+		router.Use(apiMiddleware.BodyLoginUser).POST("/login", responseOK)
 
 		w := httptest.NewRecorder()
 		body := map[string]interface{}{
@@ -41,13 +46,15 @@ func TestBodyLoginUser(t *testing.T) {
 
 		router.Serve(w, req)
 
-		assert.Equal(t, http.StatusUnauthorized, w.Code)
-		assert.Equal(t, "", w.Body.String())
+		assert.Equal(t, http.StatusBadRequest, w.Code)
 	}
 
 	correctBodyForm := func() {
+		mockRepo := &repository.Repository{}
+		apiMiddleware := NewWithRepository(mockRepo, MiddlewareConf{})
+
 		router := api.New()
-		router.Use(BodyLoginUser).POST("/login", responseOK)
+		router.Use(apiMiddleware.BodyLoginUser).POST("/login", responseOK)
 
 		w := httptest.NewRecorder()
 		body := map[string]interface{}{
@@ -69,8 +76,11 @@ func TestBodyLoginUser(t *testing.T) {
 }
 
 func TestCorsMiddleware(t *testing.T) {
+	mockRepo := &repository.Repository{}
+	apiMiddleware := NewWithRepository(mockRepo, MiddlewareConf{})
+
 	router := api.New()
-	router.Use(CorsMiddleware).GET("/cors", responseOK)
+	router.Use(apiMiddleware.CorsMiddleware).GET("/cors", responseOK)
 
 	w := httptest.NewRecorder()
 
@@ -85,15 +95,15 @@ func TestCorsMiddleware(t *testing.T) {
 func TestBearerExtractToken(t *testing.T) {
 	withBearer := func(t *testing.T) {
 		expected := "eee-fff-ggg"
-		bearer := fmt.Sprintf("Bearer %v", expected)
-		token := bearerExtractToken(bearer)
+		bearer := fmt.Sprintf("%v%v", constants.BearerTokenTemplate, expected)
+		token := bearerToToken(bearer)
 
 		assert.Equal(t, expected, token)
 	}
 	withNoBearer := func(t *testing.T) {
 		expected := "eee-fff-ggg"
 		bearer := fmt.Sprintf(" %v", expected)
-		token := bearerExtractToken(bearer)
+		token := bearerToToken(bearer)
 
 		assert.Equal(t, expected, token)
 	}
@@ -103,103 +113,82 @@ func TestBearerExtractToken(t *testing.T) {
 }
 
 func TestMiddlewareAuth(t *testing.T) {
-	setupTests()
 	auth := authentication.New(secretTest)
-	repo := repository.New()
-	col := repo.Col(constants.CollectionSessions)
-	repo.DatabaseDrop(context.TODO())
 
-	var sessions []models.Session = []models.Session{
-		{Token: ""},
-		{Token: ""},
-		{Token: ""},
-	}
+	var sessionsAuthorized []models.Session = make([]models.Session, 0)
+	var sessionsUnauthorized []models.Session = make([]models.Session, 0)
 
-	for index, session := range sessions {
-		var current = session
+	for i := 0; i < 3; i++ {
 		token, _ := auth.CreateToken("someOne")
-		current.Token = token
-		sessions[index] = current
+		var authorized = models.Session{Token: token}
+		var unauthorized = models.Session{Token: ""}
+
+		authorized.Token = fmt.Sprintf("%v%v", constants.BearerTokenTemplate, authorized.Token)
+		unauthorized.Token = fmt.Sprintf("%v%v", constants.BearerTokenTemplate, unauthorized.Token)
+
+		sessionsAuthorized = append(sessionsAuthorized, authorized)
+		sessionsUnauthorized = append(sessionsUnauthorized, unauthorized)
 	}
 
-	for _, session := range sessions {
-		col.InsertOne(session)
-	}
+	mockRepo := &repository.Repository{}
+	mockCollectionSessions := &repository.Collection{}
 
-	unauthorized := func() {
-		router := api.New()
-		router.Use(AuthRequiredMiddleware).GET("/api", responseOK)
+	mockRepo.On("Col", mock.AnythingOfType("string")).Return(func(col string) repo.Collection {
+		return mockCollectionSessions
+	})
 
-		token := "Bearer asdasd"
-		w := httptest.NewRecorder()
+	// col.FindOne(bson.M{"token": token}, &session)
+	mockCollectionSessions.On("FindOne", mock.AnythingOfType("primitive.M"), mock.Anything).
+		Return(func(filter interface{}, dest interface{}) error {
+			f := filter.(primitive.M)
 
-		req, _ := http.NewRequest(http.MethodGet, "/api", nil)
-		req.Header.Add("Authorization", token)
+			for i := 0; i < len(sessionsAuthorized); i++ {
+				session := sessionsAuthorized[i]
+				session.Token = bearerToToken(sessionsAuthorized[i].Token)
 
-		router.Serve(w, req)
-		// AuthRequiredMiddleware(w, req)
+				if f["token"] == session.Token {
+					utils.ReflectValueTo(session, dest)
+				}
+			}
 
-		assert.Equal(t, http.StatusUnauthorized, w.Code)
-		assert.Equal(t, "Unauthorized", w.Body.String())
-	}
+			return nil
+		})
 
-	authorized := func() {
-		for _, session := range sessions {
-			router := api.New()
-			router.Use(AuthRequiredMiddleware).GET("/api", responseOK)
+	apiMiddleware := NewWithRepository(mockRepo, MiddlewareConf{SecretToken: secretTest})
 
-			var (
-				token = fmt.Sprintf("Bearer %v", session.Token)
-			)
+	router := api.New()
+	router.Use(apiMiddleware.AuthRequiredMiddleware).GET("/api", responseOK)
 
-			fmt.Print(session.Token)
+	authorized := func(t *testing.T, router api.API) {
+		for i := 0; i < len(sessionsAuthorized); i++ {
+			session := sessionsAuthorized[i]
 
 			w := httptest.NewRecorder()
 
 			req, _ := http.NewRequest(http.MethodGet, "/api", nil)
-			req.Header.Add("Authorization", token)
+			req.Header.Add("Authorization", session.Token)
 			router.Serve(w, req)
-
-			// AuthRequiredMiddleware(w, req)
 
 			assert.Equal(t, http.StatusOK, w.Code)
 			assert.Equal(t, "OK", w.Body.String())
 		}
 	}
 
-	authorizedExpired := func() {
-		col.Drop() // Drop collection of sessions registered
-
-		for _, session := range sessions {
-			router := api.New()
-			router.Use(AuthRequiredMiddleware).GET("/api", responseOK)
-
-			var (
-				token = fmt.Sprintf("Bearer %v", session.Token)
-			)
+	unauthorized := func(t *testing.T, router api.API) {
+		for i := 0; i < len(sessionsUnauthorized); i++ {
+			session := sessionsUnauthorized[i]
 
 			w := httptest.NewRecorder()
 
 			req, _ := http.NewRequest(http.MethodGet, "/api", nil)
-			req.Header.Add("Authorization", token)
+			req.Header.Add("Authorization", session.Token)
+
 			router.Serve(w, req)
 
-			// AuthRequiredMiddleware(w, req)
-
 			assert.Equal(t, http.StatusUnauthorized, w.Code)
-			assert.Equal(t, "Session Expired", w.Body.String())
 		}
 	}
 
-	unauthorized()
-	authorized()
-	authorizedExpired()
-}
-
-func setupTests() {
-	var indexes bool = false
-	os.Setenv("DATABASE_NAME", "golangtest")
-	os.Setenv("DATABASE_URI", "mongodb://root:dbpwd@localhost:27017")
-
-	repository.Initialize(indexes)
+	authorized(t, router)
+	unauthorized(t, router)
 }

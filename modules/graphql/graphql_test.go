@@ -2,10 +2,8 @@ package graphql
 
 import (
 	"fmt"
-	"os"
 	"reflect"
 	"testing"
-	"time"
 
 	gql "github.com/graphql-go/graphql"
 	"github.com/stretchr/testify/mock"
@@ -15,7 +13,6 @@ import (
 	"github.com/yellyoshua/elections-app/repository"
 	"github.com/yellyoshua/elections-app/utils"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"golang.org/x/net/context"
 )
 
 // TODO: Test graphql all queries
@@ -48,23 +45,6 @@ var QueryUpdateUser string = `
 	}
 `
 
-func dropDBAndRepositoryStart(t *testing.T) {
-	os.Setenv("DATABASE_NAME", "golangtest")
-	os.Setenv("DATABASE_URI", "mongodb://root:dbpwd@localhost:27017")
-	var indexes bool = false
-
-	ctx, cancel := context.WithTimeout(context.TODO(), 5*time.Second)
-
-	defer cancel()
-
-	repository.Initialize(indexes)
-	repo := repository.New()
-
-	if err := repo.DatabaseDrop(ctx); err != nil {
-		t.Fatalf("Error dropping database: %v", err)
-	}
-}
-
 func TestGraphqlModule(t *testing.T) {
 	sampleUser := models.User{
 		Name:     "TestName",
@@ -74,9 +54,9 @@ func TestGraphqlModule(t *testing.T) {
 		Password: "demodotcom",
 	}
 	repoMock := new(mockRepo.Repository)
-	repoClientMock := new(mockRepo.Client)
+	repoClientMock := new(mockRepo.Collection)
 
-	repoMock.On("Col", constants.CollectionUsers).Return(func(repo string) repository.Client {
+	repoMock.On("Col", constants.CollectionUsers).Return(func(repo string) repository.Collection {
 		return repoClientMock
 	})
 

@@ -10,8 +10,15 @@ const (
 )
 
 const (
-	// DefaultPort 
+	// DefaultPort
 	DefaultPort string = "3000"
+	// DefaultDatabase in case MONGODB_DATABASE not exist
+	DefaultDatabase string = "elections"
+)
+
+const (
+	// BearerTokenTemplate _
+	BearerTokenTemplate string = "Bearer "
 )
 
 const (
@@ -19,4 +26,9 @@ const (
 	APIPublicFolder string = "public"
 	// APIUploadFolder path for serve static files
 	APIUploadFolder string = "public/uploads"
+)
+
+const (
+	// Unauthorized when make a request that required authentication
+	Unauthorized string = "Unauthorized"
 )

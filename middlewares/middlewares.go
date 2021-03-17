@@ -16,58 +16,67 @@ import (
 	"gopkg.in/validator.v2"
 )
 
-var secret string = "secret_string"
-
-func bearerExtractToken(bearer string) string {
-	var token string
-	authorization := "Bearer"
-
-	if len(bearer) > len(authorization) {
-		tokenNoTrim := strings.TrimPrefix(bearer, authorization)
-		token = strings.TrimPrefix(tokenNoTrim, " ")
-	}
-
-	return token
+// MiddlewareConf _
+type MiddlewareConf struct {
+	SecretToken string
+	SecretCSRF  string
+	CSRFKey     string
 }
 
-var csrfSecret = ""
+type MiddlewareInstance interface {
+	AuthRequiredMiddleware(ctx *gin.Context)
+	CorsMiddleware(ctx *gin.Context)
+	BodyLoginUser(ctx *gin.Context)
+	CSRF(ctx *gin.Context)
+}
 
-var CSRFKey = "CSRF_TOKEN"
+type instanceStruct struct {
+	repo repository.Repository
+	conf MiddlewareConf
+}
 
-// CSRF protect attacks of CSRF token
-func CSRF(ctx *gin.Context) {
-	uuid, _ := utils.GenerateUniqueID(nil)
-	jwt := authentication.New(csrfSecret)
-	token, _ := jwt.CreateToken(uuid)
+// New _
+func New(conf MiddlewareConf) MiddlewareInstance {
+	repo := repository.New()
+	return NewWithRepository(repo, conf)
+}
 
-	ctx.Set(CSRFKey, token)
-
-	ctx.Next()
+// NewWithRepository _
+func NewWithRepository(repo repository.Repository, conf MiddlewareConf) MiddlewareInstance {
+	return &instanceStruct{repo: repo, conf: conf}
 }
 
 // AuthRequiredMiddleware _
-func AuthRequiredMiddleware(ctx *gin.Context) {
+func (i *instanceStruct) AuthRequiredMiddleware(ctx *gin.Context) {
 	var session models.Session
+	auth := authentication.New(i.conf.SecretToken)
 	authorization := ctx.GetHeader("Authorization")
-	token := bearerExtractToken(authorization)
+	token := bearerToToken(authorization)
 
-	repo := repository.New()
+	col := i.repo.Col(constants.CollectionSessions)
+	if err := col.FindOne(bson.M{"token": token}, &session); err != nil {
+		ctx.AbortWithError(http.StatusInternalServerError, err)
+		ctx.Request.Context().Done()
+	}
 
-	col := repo.Col(constants.CollectionSessions)
-	col.FindOne(bson.M{"token": token}, &session)
-
-	auth := authentication.New(secret)
-	_, errToken := auth.VerifyToken(token)
-
-	if errToken != nil || session.Token != token {
-		ctx.AbortWithError(http.StatusUnauthorized, fmt.Errorf("Unauthorized"))
+	if len(session.Token) == 0 {
+		ctx.AbortWithError(http.StatusUnauthorized, fmt.Errorf(constants.Unauthorized))
+		ctx.Request.Context().Done()
 	} else {
-		ctx.Next()
+		tokenValue, errWithTokenFormat := auth.VerifyToken(token)
+
+		if errWithTokenFormat != nil {
+			ctx.AbortWithStatus(http.StatusInternalServerError)
+			ctx.Request.Context().Done()
+		} else {
+			ctx.Set("Authorization", tokenValue)
+			ctx.Next()
+		}
 	}
 }
 
 // CorsMiddleware habilitate external request
-func CorsMiddleware(ctx *gin.Context) {
+func (i *instanceStruct) CorsMiddleware(ctx *gin.Context) {
 	ctx.Header("Access-Control-Allow-Origin", "*")
 	ctx.Header("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
 	ctx.Header("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
@@ -76,14 +85,12 @@ func CorsMiddleware(ctx *gin.Context) {
 }
 
 // BodyLoginUser handle body request and valid fields
-func BodyLoginUser(ctx *gin.Context) {
+func (i *instanceStruct) BodyLoginUser(ctx *gin.Context) {
 	var user models.BodyLoginUser
 	body := ctx.Request.Body
 	userValidator := validator.NewValidator()
 
 	json.NewDecoder(body).Decode(&user)
-
-	fmt.Printf("USER: [%v]", user)
 
 	defer body.Close()
 
@@ -91,8 +98,29 @@ func BodyLoginUser(ctx *gin.Context) {
 		// the request did not include all of the User
 		// struct fields, so send a http.StatusBadRequest
 		// back or something
-		ctx.AbortWithError(http.StatusUnauthorized, errs)
+		ctx.AbortWithStatus(http.StatusBadRequest)
+		ctx.Request.Context().Done()
 	} else {
 		ctx.Next()
 	}
+}
+
+// CSRF protect attacks of CSRF token
+func (i *instanceStruct) CSRF(ctx *gin.Context) {
+	CSRFsecret := i.conf.SecretCSRF
+	CSRFKey := i.conf.CSRFKey
+
+	uuid, _ := utils.GenerateUniqueID(nil)
+	jwt := authentication.New(CSRFsecret)
+	token, _ := jwt.CreateToken(uuid)
+
+	ctx.Set(CSRFKey, token)
+
+	ctx.Next()
+}
+
+func bearerToToken(bearer string) string {
+	bearerPrefix := constants.BearerTokenTemplate
+	bearerParsed := strings.TrimPrefix(bearer, bearerPrefix)
+	return strings.TrimPrefix(bearerParsed, " ")
 }

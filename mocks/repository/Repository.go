@@ -15,15 +15,15 @@ type Repository struct {
 }
 
 // Col provides a mock function with given fields: collection
-func (_m *Repository) Col(collection string) repository.Client {
+func (_m *Repository) Col(collection string) repository.Collection {
 	ret := _m.Called(collection)
 
-	var r0 repository.Client
-	if rf, ok := ret.Get(0).(func(string) repository.Client); ok {
+	var r0 repository.Collection
+	if rf, ok := ret.Get(0).(func(string) repository.Collection); ok {
 		r0 = rf(collection)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(repository.Client)
+			r0 = ret.Get(0).(repository.Collection)
 		}
 	}
 
