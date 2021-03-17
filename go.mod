@@ -23,7 +23,6 @@ require (
 	github.com/stretchr/testify v1.7.0
 	github.com/tidwall/pretty v1.0.2 // indirect
 	github.com/ugorji/go v1.2.2 // indirect
-	github.com/vektra/mockery/v2 v2.6.0 // indirect
 	go.mongodb.org/mongo-driver v1.4.4
 	golang.org/x/crypto v0.0.0-20201221181555-eec23a3978ad // indirect
 	golang.org/x/net v0.0.0-20201224014010-6772e930b67b

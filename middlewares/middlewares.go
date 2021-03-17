@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/yellyoshua/elections-app/constants"
 	"github.com/yellyoshua/elections-app/models"
 	"github.com/yellyoshua/elections-app/modules/authentication"
 	"github.com/yellyoshua/elections-app/repository"
@@ -52,7 +53,7 @@ func AuthRequiredMiddleware(ctx *gin.Context) {
 
 	repo := repository.New()
 
-	col := repo.Col(repository.CollectionSessions)
+	col := repo.Col(constants.CollectionSessions)
 	col.FindOne(bson.M{"token": token}, &session)
 
 	auth := authentication.New(secret)

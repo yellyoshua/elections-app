@@ -5,16 +5,11 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/yellyoshua/elections-app/constants"
 	"github.com/yellyoshua/elections-app/logger"
 )
 
-// PublicFolder path for serve static files
-var PublicFolder string = "public"
-
-// UploadFolder path for serve static files
-var UploadFolder string = "public/uploads"
-
-// API __
+// API http methods GET, POST, PUT, DELETE, SERVE, USE and LISTEN
 type API interface {
 	GET(path string, handler ...gin.HandlerFunc)
 	POST(path string, handler ...gin.HandlerFunc)
@@ -39,8 +34,8 @@ func New() API {
 	router.Use(gin.Logger())
 	router.Use(gin.Recovery())
 
-	router.Static("/f/", PublicFolder)
-	router.Static("/static/", UploadFolder)
+	router.Static("/f/", constants.APIPublicFolder)
+	router.Static("/static/", constants.APIUploadFolder)
 
 	return &apistruct{router: router, middlewares: make([]gin.HandlerFunc, 0)}
 }
@@ -89,7 +84,7 @@ func (api *apistruct) DELETE(path string, handler ...gin.HandlerFunc) {
 
 func createServer(router *gin.Engine, port string) *http.Server {
 	if noPort := len(port) == 0; noPort {
-		port = "3000"
+		port = constants.DefaultPort
 	}
 
 	server := new(http.Server)

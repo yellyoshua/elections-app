@@ -1,11 +1,10 @@
 package handlers
 
 import (
-	"net/http"
-	"time"
+	http "net/http"
+	time "time"
 
-	"github.com/gin-gonic/gin"
-	"github.com/yellyoshua/elections-app/modules/graphql"
+	gin "github.com/gin-gonic/gin"
 )
 
 // HandlerHome rest handler home
@@ -15,11 +14,11 @@ func HandlerHome(ctx *gin.Context) {
 	ResponseString(ctx, "Powered with Golang")
 }
 
-// HandlerGraphql handler http request of graphql
-func HandlerGraphql(ctx *gin.Context) {
-	graphqlModule := graphql.New().Handler()
-	graphqlModule.ServeHTTP(ctx.Writer, ctx.Request)
-}
+// // HandlerGraphql handler http request of graphql
+// func HandlerGraphql(ctx *gin.Context) {
+// 	graphqlModule := graphql.New().Handler()
+// 	graphqlModule.ServeHTTP(ctx.Writer, ctx.Request)
+// }
 
 // HandlerAPI handle api
 func HandlerAPI(ctx *gin.Context) {

@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/yellyoshua/elections-app/constants"
 	"github.com/yellyoshua/elections-app/logger"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -79,7 +80,7 @@ func (s *step) SetupIndexes() {
 
 	defer closeChannels(ctxCancel, chanErrs)
 
-	go createIndexes(ctx, db.Collection(CollectionUsers), usersIndexes, chanErrs[0])
+	go createIndexes(ctx, db.Collection(constants.CollectionUsers), usersIndexes, chanErrs[0])
 
 	for _, c := range chanErrs {
 		var err error
@@ -132,7 +133,6 @@ func createIndexes(ctx context.Context, col *mongo.Collection, indexes []mongo.I
 	}
 
 	c <- nil
-	return
 }
 
 func closeChannels(ctxCancel context.CancelFunc, chans []chan error) {

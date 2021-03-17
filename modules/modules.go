@@ -1,10 +1,10 @@
 package modules
 
 import (
-	"github.com/yellyoshua/elections-app/logger"
-	"github.com/yellyoshua/elections-app/modules/authentication"
-	"github.com/yellyoshua/elections-app/modules/graphql"
-	"github.com/yellyoshua/elections-app/modules/storage"
+	logger "github.com/yellyoshua/elections-app/logger"
+	authentication "github.com/yellyoshua/elections-app/modules/authentication"
+	graphql "github.com/yellyoshua/elections-app/modules/graphql"
+	storage "github.com/yellyoshua/elections-app/modules/storage"
 )
 
 // Initialize create and setup modules

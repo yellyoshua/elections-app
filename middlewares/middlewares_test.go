@@ -13,14 +13,13 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/yellyoshua/elections-app/api"
+	"github.com/yellyoshua/elections-app/constants"
 	"github.com/yellyoshua/elections-app/models"
 	"github.com/yellyoshua/elections-app/modules/authentication"
 	"github.com/yellyoshua/elections-app/repository"
 )
 
 var secretTest string = "secret_string"
-
-var auth authentication.Auth = authentication.New(secretTest)
 
 func responseOK(ctx *gin.Context) {
 	ctx.String(http.StatusOK, "OK")
@@ -107,7 +106,7 @@ func TestMiddlewareAuth(t *testing.T) {
 	setupTests()
 	auth := authentication.New(secretTest)
 	repo := repository.New()
-	col := repo.Col(repository.CollectionSessions)
+	col := repo.Col(constants.CollectionSessions)
 	repo.DatabaseDrop(context.TODO())
 
 	var sessions []models.Session = []models.Session{

@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/graphql-go/graphql"
 	gql "github.com/graphql-go/graphql"
 	gqlhandler "github.com/graphql-go/graphql-go-handler"
+	"github.com/yellyoshua/elections-app/constants"
 	"github.com/yellyoshua/elections-app/logger"
 	"github.com/yellyoshua/elections-app/models"
 	"github.com/yellyoshua/elections-app/repository"
@@ -17,8 +17,8 @@ import (
 
 // TODO: Create graphql mutator for delete user by username and query find
 
-// resolver Queries and Mutators
-type resolver interface {
+// grqphqlresolver Queries and Mutators
+type grqphqlresolver interface {
 	// Queries
 	GetUsers(params gql.ResolveParams) (interface{}, error)
 	FindUserByID(params gql.ResolveParams) (interface{}, error)
@@ -28,6 +28,10 @@ type resolver interface {
 	UpdateUser(params gql.ResolveParams) (interface{}, error)
 }
 
+type resolverStruct struct {
+	repo repository.Repository
+}
+
 // Service _
 type Service interface {
 	Handler() http.Handler
@@ -35,71 +39,79 @@ type Service interface {
 
 type serviceStruct struct {
 	schema gql.Schema
+	config GraphqlConfig
 }
 
-type resolverStruct struct {
-	repo repository.Repository
+// GraphqlConfig __
+type GraphqlConfig struct {
+	Playground bool
+	GraphiQL   bool
+	Pretty     bool
 }
 
 // Initialize func to init graphql module
 func Initialize() {
 	repo := repository.New()
-	_, err := graphqlSchemas(repo)
+	_, err := graphqlInit(repo)
 	if err != nil {
 		logger.Fatal("Error trying setup graphql schemas -> %s", err)
 	}
 }
 
 // New _
-func New() Service {
+func New(config GraphqlConfig) Service {
 	repo := repository.New()
-	return NewWitRepository(repo)
+	return NewWitRepository(repo, config)
 }
 
 // NewWitRepository _
-func NewWitRepository(repo repository.Repository) Service {
-	schema, _ := graphqlSchemas(repo)
-	return &serviceStruct{schema: schema}
+func NewWitRepository(repo repository.Repository, config GraphqlConfig) Service {
+	schemas, _ := graphqlInit(repo)
+	return &serviceStruct{schema: schemas, config: config}
 }
 
-func graphqlSchemas(repo repository.Repository) (gql.Schema, error) {
-	graphqlService := &resolverStruct{
+func newGraphqlResolvers(repo repository.Repository) grqphqlresolver {
+	return &resolverStruct{
 		repo: repo,
 	}
+}
 
-	var mutators = graphql.NewObject(graphql.ObjectConfig{
+func graphqlInit(repo repository.Repository) (gql.Schema, error) {
+	graphqlService := newGraphqlResolvers(repo)
+
+	var mutators = gql.NewObject(gql.ObjectConfig{
 		Name: "RootMutation",
-		Fields: graphql.Fields{
-			"updateUser": &graphql.Field{
-				Type:        models.UserGQL, // the return type for this field
+		Fields: gql.Fields{
+			"updateUser": &gql.Field{
+				Type:        models.GraphqlUser, // the return type for this field
 				Description: "Update a user",
-				Args:        models.UpdateUserGQL,
+				Args:        models.GraphqlUpdateUser,
 				Resolve:     graphqlService.UpdateUser,
 			},
 		},
 	})
 
-	var queries = graphql.NewObject(graphql.ObjectConfig{
+	var queries = gql.NewObject(gql.ObjectConfig{
 		Name: "RootQuery",
-		Fields: graphql.Fields{
-			"users": &graphql.Field{
-				Type:        graphql.NewList(models.UserGQL),
+		Fields: gql.Fields{
+			"users": &gql.Field{
+				Type:        gql.NewList(models.GraphqlUser),
 				Description: "Get users",
 				Resolve:     graphqlService.GetUsers,
 			},
-			"findUserByID": &graphql.Field{
-				Type:    models.UserGQL,
-				Args:    models.FindUserByIDGQL,
+			"findUserByID": &gql.Field{
+				Type:    models.GraphqlUser,
+				Args:    models.GraphqlFindUserByID,
 				Resolve: graphqlService.FindUserByID,
 			},
-			"findUserByUsername": &graphql.Field{
-				Type:    models.UserGQL,
-				Args:    models.FindUserByUsernameGQL,
+			"findUserByUsername": &gql.Field{
+				Type:    models.GraphqlUser,
+				Args:    models.GraphqlFindUserByUsername,
 				Resolve: graphqlService.FindUserByUsername,
 			},
-			"createUser": &graphql.Field{
-				Type:    models.UserGQL,
-				Args:    models.CreateUserGQL,
+			"createUser": &gql.Field{
+				Type:    models.GraphqlUser,
+				Args:    models.GraphqlCreateUser,
 				Resolve: graphqlService.CreateUser,
 			},
 		},
@@ -118,16 +130,16 @@ func (gql *serviceStruct) Handler() http.Handler {
 
 	graphqlHandler := gqlhandler.New(&gqlhandler.Config{
 		Schema:     &gql.schema,
-		Pretty:     true,
-		Playground: true,
-		GraphiQL:   true,
+		Pretty:     gql.config.Pretty,
+		Playground: gql.config.Playground,
+		GraphiQL:   gql.config.GraphiQL,
 	})
 
 	return graphqlHandler
 }
 
 func (r *resolverStruct) GetUsers(params gql.ResolveParams) (interface{}, error) {
-	col := r.repo.Col(repository.CollectionUsers)
+	col := r.repo.Col(constants.CollectionUsers)
 
 	filter := bson.D{}
 	var users []models.User
@@ -143,7 +155,7 @@ func (r *resolverStruct) FindUserByID(params gql.ResolveParams) (interface{}, er
 	var err error
 	var userID primitive.ObjectID
 
-	col := r.repo.Col(repository.CollectionUsers)
+	col := r.repo.Col(constants.CollectionUsers)
 	userIDString, _ := params.Args["id"].(string)
 
 	userID, err = primitive.ObjectIDFromHex(userIDString)
@@ -162,7 +174,7 @@ func (r *resolverStruct) FindUserByID(params gql.ResolveParams) (interface{}, er
 
 func (r *resolverStruct) FindUserByUsername(params gql.ResolveParams) (interface{}, error) {
 
-	col := r.repo.Col(repository.CollectionUsers)
+	col := r.repo.Col(constants.CollectionUsers)
 	username, _ := params.Args["username"].(string)
 
 	var user models.User
@@ -175,7 +187,7 @@ func (r *resolverStruct) FindUserByUsername(params gql.ResolveParams) (interface
 }
 
 func (r *resolverStruct) CreateUser(params gql.ResolveParams) (interface{}, error) {
-	col := r.repo.Col(repository.CollectionUsers)
+	col := r.repo.Col(constants.CollectionUsers)
 	name, _ := params.Args["name"].(string)
 	surname, _ := params.Args["surname"].(string)
 	username, _ := params.Args["username"].(string)
@@ -207,7 +219,7 @@ func (r *resolverStruct) UpdateUser(params gql.ResolveParams) (interface{}, erro
 	var err error
 	var userID primitive.ObjectID
 
-	col := r.repo.Col(repository.CollectionUsers)
+	col := r.repo.Col(constants.CollectionUsers)
 	userIDString, _ := params.Args["userID"].(string)
 	delete(params.Args, "userID")
 

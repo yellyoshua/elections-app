@@ -5,10 +5,12 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/yellyoshua/elections-app/api"
+	"github.com/yellyoshua/elections-app/constants"
 	"github.com/yellyoshua/elections-app/handlers"
 	"github.com/yellyoshua/elections-app/logger"
 	"github.com/yellyoshua/elections-app/middlewares"
 	"github.com/yellyoshua/elections-app/modules"
+	"github.com/yellyoshua/elections-app/modules/graphql"
 	"github.com/yellyoshua/elections-app/repository"
 )
 
@@ -36,10 +38,14 @@ func setupServer() {
 	port := os.Getenv("PORT")
 	router := api.New()
 
-	router.POST("/graphql", handlers.HandlerGraphql)
-	router.GET("/graphql", handlers.HandlerGraphql)
-	router.PUT("/graphql", handlers.HandlerGraphql)
-	router.DELETE("/graphql", handlers.HandlerGraphql)
+	graphqlSession := graphql.New(graphql.GraphqlConfig{Playground: true, GraphiQL: true, Pretty: true})
+
+	graphqlHandler := graphqlSession.Handler()
+
+	router.POST("/graphql", api.WrapperGinHandler(graphqlHandler))
+	router.GET("/graphql", api.WrapperGinHandler(graphqlHandler))
+	router.PUT("/graphql", api.WrapperGinHandler(graphqlHandler))
+	router.DELETE("/graphql", api.WrapperGinHandler(graphqlHandler))
 	router.Use(middlewares.AuthRequiredMiddleware).GET("/api", handlers.HandlerAPI)
 	router.Use(middlewares.BodyLoginUser).POST("/auth/local", handlers.HandlerLoginUser)
 	router.GET("/", handlers.HandlerHome)
@@ -73,8 +79,8 @@ func setupEnvironments() {
 // Folders create and setup permissions if don't exist
 func setupFolders() {
 	folders := map[string]os.FileMode{
-		api.PublicFolder: os.ModeDir,
-		api.UploadFolder: os.ModeDir,
+		constants.APIPublicFolder: os.ModeDir,
+		constants.APIUploadFolder: os.ModeDir,
 	}
 
 	for folder, permission := range folders {

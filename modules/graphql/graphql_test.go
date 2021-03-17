@@ -7,8 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/graphql-go/graphql"
+	gql "github.com/graphql-go/graphql"
 	"github.com/stretchr/testify/mock"
+	"github.com/yellyoshua/elections-app/constants"
 	mockRepo "github.com/yellyoshua/elections-app/mocks/repository"
 	"github.com/yellyoshua/elections-app/models"
 	"github.com/yellyoshua/elections-app/repository"
@@ -20,7 +21,7 @@ import (
 // TODO: Test graphql all queries
 type T struct {
 	Query     string
-	Schema    graphql.Schema
+	Schema    gql.Schema
 	Expected  interface{}
 	Variables map[string]interface{}
 }
@@ -75,7 +76,7 @@ func TestGraphqlModule(t *testing.T) {
 	repoMock := new(mockRepo.Repository)
 	repoClientMock := new(mockRepo.Client)
 
-	repoMock.On("Col", repository.CollectionUsers).Return(func(repo string) repository.Client {
+	repoMock.On("Col", constants.CollectionUsers).Return(func(repo string) repository.Client {
 		return repoClientMock
 	})
 
@@ -95,7 +96,7 @@ func TestGraphqlModule(t *testing.T) {
 		return nil
 	})
 
-	schema, err := graphqlSchemas(repoMock)
+	schema, err := graphqlInit(repoMock)
 	if err != nil {
 		t.Fatalf("Error dropping collection: %v", err)
 	}
@@ -104,7 +105,7 @@ func TestGraphqlModule(t *testing.T) {
 		{
 			Query:  QueryCreateUser,
 			Schema: schema,
-			Expected: &graphql.Result{
+			Expected: &gql.Result{
 				Data: map[string]interface{}{
 					"createUser": map[string]interface{}{"username": sampleUser.Username},
 				},
@@ -120,7 +121,7 @@ func TestGraphqlModule(t *testing.T) {
 		{
 			Query:  QueryFindByUsername,
 			Schema: schema,
-			Expected: &graphql.Result{
+			Expected: &gql.Result{
 				Data: map[string]interface{}{
 					"findUserByUsername": map[string]interface{}{
 						"username": sampleUser.Username,
@@ -135,7 +136,7 @@ func TestGraphqlModule(t *testing.T) {
 		{
 			Query:  QueryFindByUsername,
 			Schema: schema,
-			Expected: &graphql.Result{
+			Expected: &gql.Result{
 				Data: map[string]interface{}{
 					"findUserByUsername": map[string]interface{}{
 						"username": "",
@@ -150,13 +151,13 @@ func TestGraphqlModule(t *testing.T) {
 	}
 
 	for _, query := range graphqlQueries {
-		params := graphql.Params{
+		params := gql.Params{
 			Schema:         query.Schema,
 			RequestString:  query.Query,
 			VariableValues: query.Variables,
 		}
 
-		result := graphql.Do(params)
+		result := gql.Do(params)
 		if len(result.Errors) > 0 {
 			t.Fatalf("wrong result, unexpected errors: %v", result.Errors)
 		}

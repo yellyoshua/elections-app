@@ -1,9 +1,7 @@
 package models
 
-import (
-	"github.com/graphql-go/graphql"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-)
+import gql "github.com/graphql-go/graphql"
+import primitive "go.mongodb.org/mongo-driver/bson/primitive"
 
 // ID        primitive.ObjectID `bson:"_id" json:"id,omitempty"`
 
@@ -21,97 +19,97 @@ type User struct {
 	Created  int64              `bson:"created" json:"created,omitempty"`
 }
 
-// UserGQL _
-var UserGQL = graphql.NewObject(graphql.ObjectConfig{
+// GraphqlUser _
+var GraphqlUser = gql.NewObject(gql.ObjectConfig{
 	Name: "User",
-	Fields: graphql.Fields{
-		"_id": &graphql.Field{
-			Type: graphql.String,
+	Fields: gql.Fields{
+		"_id": &gql.Field{
+			Type: gql.String,
 		},
-		"name": &graphql.Field{
-			Type: graphql.String,
+		"name": &gql.Field{
+			Type: gql.String,
 		},
-		"surname": &graphql.Field{
-			Type: graphql.String,
+		"surname": &gql.Field{
+			Type: gql.String,
 		},
-		"fullName": &graphql.Field{
-			Type: graphql.String,
+		"fullName": &gql.Field{
+			Type: gql.String,
 		},
-		"username": &graphql.Field{
-			Type: graphql.String,
+		"username": &gql.Field{
+			Type: gql.String,
 		},
-		"email": &graphql.Field{
-			Type: graphql.String,
+		"email": &gql.Field{
+			Type: gql.String,
 		},
-		"verified": &graphql.Field{
-			Type: graphql.Boolean,
+		"verified": &gql.Field{
+			Type: gql.Boolean,
 		},
-		"active": &graphql.Field{
-			Type: graphql.Boolean,
+		"active": &gql.Field{
+			Type: gql.Boolean,
 		},
-		"created": &graphql.Field{
-			Type: graphql.Int,
+		"created": &gql.Field{
+			Type: gql.Int,
 		},
 	},
 })
 
-// CreateUserGQL params graphql create user query
-var CreateUserGQL = graphql.FieldConfigArgument{
-	"name": &graphql.ArgumentConfig{
-		Type: graphql.NewNonNull(graphql.String),
+// GraphqlCreateUser params graphql create user query
+var GraphqlCreateUser = gql.FieldConfigArgument{
+	"name": &gql.ArgumentConfig{
+		Type: gql.NewNonNull(gql.String),
 	},
-	"surname": &graphql.ArgumentConfig{
-		Type: graphql.NewNonNull(graphql.String),
+	"surname": &gql.ArgumentConfig{
+		Type: gql.NewNonNull(gql.String),
 	},
-	"username": &graphql.ArgumentConfig{
-		Type: graphql.NewNonNull(graphql.String),
+	"username": &gql.ArgumentConfig{
+		Type: gql.NewNonNull(gql.String),
 	},
-	"email": &graphql.ArgumentConfig{
-		Type: graphql.NewNonNull(graphql.String),
+	"email": &gql.ArgumentConfig{
+		Type: gql.NewNonNull(gql.String),
 	},
-	"password": &graphql.ArgumentConfig{
-		Type: graphql.NewNonNull(graphql.String),
-	},
-}
-
-// FindUserByIDGQL params graphql
-var FindUserByIDGQL = graphql.FieldConfigArgument{
-	"id": &graphql.ArgumentConfig{
-		Type: graphql.NewNonNull(graphql.String),
+	"password": &gql.ArgumentConfig{
+		Type: gql.NewNonNull(gql.String),
 	},
 }
 
-// FindUserByUsernameGQL params graphql
-var FindUserByUsernameGQL = graphql.FieldConfigArgument{
-	"username": &graphql.ArgumentConfig{
-		Type: graphql.NewNonNull(graphql.String),
+// GraphqlFindUserByID params graphql
+var GraphqlFindUserByID = gql.FieldConfigArgument{
+	"id": &gql.ArgumentConfig{
+		Type: gql.NewNonNull(gql.String),
 	},
 }
 
-// UpdateUserGQL params graphql update user query
-var UpdateUserGQL = graphql.FieldConfigArgument{
-	"userID": &graphql.ArgumentConfig{
-		Type: graphql.NewNonNull(graphql.String),
+// GraphqlFindUserByUsername params graphql
+var GraphqlFindUserByUsername = gql.FieldConfigArgument{
+	"username": &gql.ArgumentConfig{
+		Type: gql.NewNonNull(gql.String),
 	},
-	"name": &graphql.ArgumentConfig{
-		Type: graphql.NewNonNull(graphql.String),
+}
+
+// GraphqlUpdateUser params graphql update user query
+var GraphqlUpdateUser = gql.FieldConfigArgument{
+	"userID": &gql.ArgumentConfig{
+		Type: gql.NewNonNull(gql.String),
 	},
-	"surname": &graphql.ArgumentConfig{
-		Type: graphql.NewNonNull(graphql.String),
+	"name": &gql.ArgumentConfig{
+		Type: gql.NewNonNull(gql.String),
 	},
-	"fullName": &graphql.ArgumentConfig{
-		Type: graphql.NewNonNull(graphql.String),
+	"surname": &gql.ArgumentConfig{
+		Type: gql.NewNonNull(gql.String),
 	},
-	"username": &graphql.ArgumentConfig{
-		Type: graphql.NewNonNull(graphql.String),
+	"fullName": &gql.ArgumentConfig{
+		Type: gql.NewNonNull(gql.String),
 	},
-	"email": &graphql.ArgumentConfig{
-		Type: graphql.NewNonNull(graphql.String),
+	"username": &gql.ArgumentConfig{
+		Type: gql.NewNonNull(gql.String),
 	},
-	"verified": &graphql.ArgumentConfig{
-		Type: graphql.NewNonNull(graphql.Boolean),
+	"email": &gql.ArgumentConfig{
+		Type: gql.NewNonNull(gql.String),
 	},
-	"active": &graphql.ArgumentConfig{
-		Type: graphql.NewNonNull(graphql.Boolean),
+	"verified": &gql.ArgumentConfig{
+		Type: gql.NewNonNull(gql.Boolean),
+	},
+	"active": &gql.ArgumentConfig{
+		Type: gql.NewNonNull(gql.Boolean),
 	},
 }
