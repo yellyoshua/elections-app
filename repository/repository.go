@@ -119,13 +119,13 @@ func (client *clientStruct) Find(filter interface{}, dest interface{}) error {
 
 	ctx := context.Background()
 	cursor, err = client.col.Find(context.TODO(), filter)
-	defer cursor.Close(ctx)
 
 	if err != nil {
 		return err
 	}
 
 	err = cursor.All(ctx, dest)
+	defer cursor.Close(ctx)
 
 	if err != nil {
 		return err
