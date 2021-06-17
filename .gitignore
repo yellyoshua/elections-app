@@ -1,5 +1,7 @@
 .env
 *.exe
-app
-gcs-service-test.json
-gcs-service.json
+
+node_modules/
+
+guardian/
+guardian copy/

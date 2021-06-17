@@ -1,0 +1,64 @@
+version: '3.7'
+services:
+  mongodb:
+    container_name: mongodb
+    image: docker.io/bitnami/mongodb:4.4-debian-10
+    environment:
+      - MONGODB_ADVERTISED_HOSTNAME=mongodb
+      # - MONGODB_REPLICA_SET_MODE=primary
+      # - MONGODB_REPLICA_SET_KEY=replicasetkey123
+      - MONGODB_ROOT_PASSWORD=dbpwd
+      - MONGODB_USERNAME=root
+      - MONGODB_PASSWORD=dbpwd
+      - MONGODB_DATABASE=golang
+    ports:
+      - 27017:27017
+    expose:
+      - 27017
+    volumes:
+      - ./data/mongodb:/bitnami/mongodb
+    networks:
+      - mongo-compose-network
+
+  rabbitmq:
+    container_name: rabbitmq
+    image: rabbitmq:3-management
+    environment: 
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+      - RABBITMQ_NODENAME="guestnode"
+    ports: 
+      - 15672:15672
+      - 5672:5672
+    volumes:
+      - ./data/rabbitmq:/etc/rabbitmq
+    networks:
+      - mongo-compose-network
+    
+  rabbitmq:
+    container_name: rabbitmq
+    image: rabbitmq:3.8.17-management
+    ports: 
+      - 5672:5672
+      - 15672:15672
+    networks:
+      - mongo-compose-network
+
+  mongo-express:
+    image: mongo-express
+    ports:
+      - 8081:8081
+    restart: always
+    environment:
+      ME_CONFIG_MONGODB_SERVER: mongodb
+      ME_CONFIG_MONGODB_ADMINUSERNAME: root
+      ME_CONFIG_MONGODB_ADMINPASSWORD: dbpwd
+    depends_on:
+      - mongodb
+    links:
+      - mongodb
+    networks:
+      - mongo-compose-network
+networks:
+  mongo-compose-network:
+    driver: bridge
